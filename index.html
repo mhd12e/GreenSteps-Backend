@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Live Voice Chat</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background-color: #f0f2f5; color: #1c1e21; }
+        #container { text-align: center; background: #fff; padding: 2rem 3rem; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.1); }
+        h1 { color: #4285F4; margin-bottom: 1rem; }
+        #controls button { font-size: 1.2rem; padding: 0.8rem 1.5rem; margin: 0.5rem; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.3s, transform 0.2s; }
+        #startButton { background-color: #34A853; color: white; }
+        #startButton:hover { background-color: #2c9f42; }
+        #stopButton { background-color: #EA4335; color: white; }
+        #stopButton:hover { background-color: #d93025; }
+        #stopButton:disabled { background-color: #d1d1d1; cursor: not-allowed; }
+        #status { margin-top: 1.5rem; font-size: 1rem; color: #606770; height: 2rem; display: flex; align-items: center; justify-content: center; }
+        .dot-flashing { position: relative; width: 10px; height: 10px; border-radius: 5px; background-color: #4285F4; color: #4285F4; animation: dotFlashing 1s infinite linear alternate; animation-delay: .5s; }
+        .dot-flashing::before, .dot-flashing::after { content: ''; display: inline-block; position: absolute; top: 0; }
+        .dot-flashing::before { left: -15px; width: 10px; height: 10px; border-radius: 5px; background-color: #4285F4; color: #4285F4; animation: dotFlashing 1s infinite alternate; animation-delay: 0s; }
+        .dot-flashing::after { left: 15px; width: 10px; height: 10px; border-radius: 5px; background-color: #4285F4; color: #4285F4; animation: dotFlashing 1s infinite alternate; animation-delay: 1s; }
+        @keyframes dotFlashing { 0% { background-color: #4285F4; } 50%, 100% { background-color: rgba(66, 133, 244, 0.2); } }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>Gemini Live Voice Chat</h1>
+        <div id="controls">
+            <button id="startButton">Start Call</button>
+            <button id="stopButton" disabled>Stop Call</button>
+        </div>
+        <div id="status">Ready</div>
+    </div>
+
+    <script>
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const statusDiv = document.getElementById('status');
+
+        let websocket;
+        let inputAudioContext;
+        let audioWorkletNode;
+        let mediaStreamSource;
+        let mediaStream; // To store the MediaStream so we can stop tracks
+
+        let outputAudioContext;
+        let audioQueue = [];
+        let nextPlayTime = 0;
+        let isPlaying = false;
+
+        const INPUT_SAMPLE_RATE = 16000;
+        const OUTPUT_SAMPLE_RATE = 24000;
+
+        startButton.onclick = async () => {
+            statusDiv.innerHTML = '<div class="dot-flashing"></div>';
+            startButton.disabled = true;
+            stopButton.disabled = false;
+
+            try {
+                // 1. Initialize Audio Contexts
+                inputAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                outputAudioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: OUTPUT_SAMPLE_RATE });
+                nextPlayTime = outputAudioContext.currentTime;
+
+                // Ensure audio contexts are resumed after user gesture
+                if (inputAudioContext.state === 'suspended') {
+                    await inputAudioContext.resume();
+                }
+                if (outputAudioContext.state === 'suspended') {
+                    await outputAudioContext.resume();
+                }
+
+                // 2. Load AudioWorklet module
+                // This requires a secure context (HTTPS or localhost)
+                await inputAudioContext.audioWorklet.addModule('audio-processor.js');
+
+                // 3. Get microphone access
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                        sampleRate: inputAudioContext.sampleRate // Use native sample rate for capture
+                    }, 
+                    video: false 
+                });
+                mediaStreamSource = inputAudioContext.createMediaStreamSource(mediaStream);
+                
+                // 4. Create AudioWorkletNode
+                audioWorkletNode = new AudioWorkletNode(inputAudioContext, 'audio-processor');
+                audioWorkletNode.port.onmessage = (event) => {
+                    // Received processed 16-bit PCM audio from the worklet
+                    if (websocket && websocket.readyState === WebSocket.OPEN) {
+                        websocket.send(event.data);
+                    }
+                };
+
+                // Connect stream to worklet
+                mediaStreamSource.connect(audioWorkletNode);
+                // Connect worklet to destination (not strictly necessary but keeps graph active)
+                audioWorkletNode.connect(inputAudioContext.destination);
+
+                // 5. Initialize WebSocket (Corrected URL)
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                websocket = new WebSocket(`https://test.mhd12.dev/voice/stream`); // Uses current host and port
+                websocket.binaryType = 'arraybuffer';
+
+                websocket.onopen = () => {
+                    statusDiv.textContent = 'Connected! Speak now.';
+                };
+
+                websocket.onmessage = (event) => {
+                    // Received audio data from Gemini
+                    const pcmData = new Int16Array(event.data);
+                    audioQueue.push(pcmData);
+                    if (!isPlaying) {
+                        schedulePlayback();
+                    }
+                };
+
+                websocket.onclose = () => {
+                    statusDiv.textContent = 'Disconnected';
+                    stopCall();
+                };
+
+                websocket.onerror = (error) => {
+                    console.error('WebSocket Error:', error);
+                    statusDiv.textContent = 'Connection Error';
+                    stopCall();
+                };
+
+            } catch (err) {
+                console.error('Initialization Error:', err);
+                statusDiv.textContent = `Error: ${err.message || 'Could not start call.'}`;
+                stopCall(); // Ensure cleanup on error
+            }
+        };
+        
+        function schedulePlayback() {
+            if (audioQueue.length === 0 || outputAudioContext.state === 'suspended' || outputAudioContext.state === 'closed') {
+                isPlaying = false;
+                return;
+            }
+            
+            isPlaying = true;
+            const pcmData = audioQueue.shift();
+            
+            const float32Data = new Float32Array(pcmData.length);
+            for (let i = 0; i < pcmData.length; i++) {
+                float32Data[i] = pcmData[i] / 32768.0;
+            }
+
+            const audioBuffer = outputAudioContext.createBuffer(1, float32Data.length, OUTPUT_SAMPLE_RATE);
+            audioBuffer.copyToChannel(float32Data, 0);
+
+            const source = outputAudioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(outputAudioContext.destination);
+            
+            // Ensure playTime is not in the past
+            const now = outputAudioContext.currentTime;
+            const playTime = Math.max(now, nextPlayTime);
+            
+            source.start(playTime);
+            nextPlayTime = playTime + audioBuffer.duration;
+            
+            source.onended = schedulePlayback;
+        }
+        
+        function stopCall() {
+            if (websocket && websocket.readyState !== WebSocket.CLOSED) {
+                websocket.close();
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+            if (mediaStreamSource) {
+                mediaStreamSource.disconnect();
+            }
+            if (audioWorkletNode) {
+                audioWorkletNode.disconnect();
+                // If it has a port, close it.
+                if (audioWorkletNode.port) {
+                    audioWorkletNode.port.close();
+                }
+            }
+            if (inputAudioContext && inputAudioContext.state !== 'closed') {
+                inputAudioContext.close();
+            }
+            if (outputAudioContext && outputAudioContext.state !== 'closed') {
+                outputAudioContext.close();
+            }
+            
+            audioQueue = [];
+            isPlaying = false;
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            statusDiv.textContent = 'Call Ended';
+        }
+
+        stopButton.onclick = stopCall;
+
+    </script>
+</body>
+</html>
