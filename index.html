@@ -6,7 +6,7 @@
     <title>Gemini Live Voice Chat</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background-color: #f0f2f5; color: #1c1e21; }
-        #container { text-align: center; background: #fff; padding: 2rem 3rem; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.1); }
+        #container { text-align: center; background: #fff; padding: 2rem 3rem; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
         h1 { color: #4285F4; margin-bottom: 1rem; }
         #controls button { font-size: 1.2rem; padding: 0.8rem 1.5rem; margin: 0.5rem; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.3s, transform 0.2s; }
         #startButton { background-color: #34A853; color: white; }
@@ -20,23 +20,76 @@
         .dot-flashing::before { left: -15px; width: 10px; height: 10px; border-radius: 5px; background-color: #4285F4; color: #4285F4; animation: dotFlashing 1s infinite alternate; animation-delay: 0s; }
         .dot-flashing::after { left: 15px; width: 10px; height: 10px; border-radius: 5px; background-color: #4285F4; color: #4285F4; animation: dotFlashing 1s infinite alternate; animation-delay: 1s; }
         @keyframes dotFlashing { 0% { background-color: #4285F4; } 50%, 100% { background-color: rgba(66, 133, 244, 0.2); } }
+
+        #auth-section { margin-bottom: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9; }
+        #auth-section h2 { margin-top: 0; color: #4285F4; }
+        #auth-section input[type="email"], #auth-section input[type="password"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #auth-section button {
+            padding: 8px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        #loginButton { background-color: #4285F4; color: white; }
+        #logoutButton { background-color: #EA4335; color: white; }
+        #authStatus { margin-top: 10px; font-size: 0.9rem; color: #333; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
     <div id="container">
         <h1>Gemini Live Voice Chat</h1>
-        <div id="controls">
-            <button id="startButton">Start Call</button>
-            <button id="stopButton" disabled>Stop Call</button>
+
+        <div id="auth-section">
+            <h2 id="authHeading">Login</h2>
+            <form id="loginForm">
+                <input type="email" id="email" placeholder="Email" required><br>
+                <input type="password" id="password" placeholder="Password" required><br>
+                <button type="submit" id="loginButton">Login</button>
+            </form>
+            <button id="logoutButton" class="hidden">Logout</button>
+            <div id="authStatus"></div>
         </div>
-        <div id="status">Ready</div>
+
+        <div id="app-section" class="hidden">
+            <div id="controls">
+                <button id="startButton">Start Call</button>
+                <button id="stopButton" disabled>Stop Call</button>
+            </div>
+            <div id="status">Ready</div>
+        </div>
     </div>
 
     <script>
+        // --- Constants ---
+        const ACCESS_TOKEN_KEY = 'accessToken';
+        const REFRESH_TOKEN_KEY = 'refreshToken';
+        const USER_FULL_NAME_KEY = 'userFullName'; // To store user's full name if needed on client side
+
+        // --- DOM Elements ---
+        const loginForm = document.getElementById('loginForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginButton = document.getElementById('loginButton');
+        const logoutButton = document.getElementById('logoutButton');
+        const authStatusDiv = document.getElementById('authStatus');
+        const authSection = document.getElementById('auth-section');
+        const appSection = document.getElementById('app-section');
+        const authHeading = document.getElementById('authHeading');
+
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
         const statusDiv = document.getElementById('status');
 
+        // --- Audio Variables ---
         let websocket;
         let inputAudioContext;
         let audioWorkletNode;
@@ -51,7 +104,152 @@
         const INPUT_SAMPLE_RATE = 16000;
         const OUTPUT_SAMPLE_RATE = 24000;
 
+        // --- Authentication Functions ---
+        function getAccessToken() {
+            return localStorage.getItem(ACCESS_TOKEN_KEY);
+        }
+
+        function getRefreshToken() {
+            return localStorage.getItem(REFRESH_TOKEN_KEY);
+        }
+
+        function getUserFullName() {
+            return localStorage.getItem(USER_FULL_NAME_KEY);
+        }
+
+        function isAuthenticated() {
+            return !!getAccessToken();
+        }
+
+        async function login(email, password) {
+            authStatusDiv.textContent = 'Logging in...';
+            try {
+                const response = await fetch('https://greensteps.devlix.org/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Login failed');
+                }
+
+                const data = await response.json();
+                localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+                localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
+                // In a real app, you might decode the access token to get user info
+                // For now, let's assume successful login implies some user is active.
+                // You might add an endpoint to get user details after login.
+                authStatusDiv.textContent = 'Login successful!';
+                updateAuthUI();
+            } catch (error) {
+                console.error('Login error:', error);
+                authStatusDiv.textContent = `Login failed: ${error.message}`;
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem(ACCESS_TOKEN_KEY);
+            localStorage.removeItem(REFRESH_TOKEN_KEY);
+            localStorage.removeItem(USER_FULL_NAME_KEY);
+            authStatusDiv.textContent = 'Logged out.';
+            updateAuthUI();
+        }
+
+        function updateAuthUI() {
+            if (isAuthenticated()) {
+                authSection.classList.add('hidden');
+                appSection.classList.remove('hidden');
+                // Optional: display user name if available
+                const userName = getUserFullName() || 'User';
+                // authStatusDiv.textContent = `Logged in as ${userName}`; // Can show this if we had a /me endpoint
+            } else {
+                authSection.classList.remove('hidden');
+                appSection.classList.add('hidden');
+                authHeading.textContent = 'Login';
+                loginForm.classList.remove('hidden');
+                logoutButton.classList.add('hidden');
+                authStatusDiv.textContent = ''; // Clear previous status
+            }
+        }
+
+        // --- Event Listeners for Auth ---
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            await login(email, password);
+        });
+
+        logoutButton.addEventListener('click', logout);
+
+
+        // --- Audio Processor Worklet (embedded) ---
+        const audioProcessorCode = `
+            class AudioProcessor extends AudioWorkletProcessor {
+                constructor() {
+                    super();
+                    this.targetSampleRate = 16000;
+                }
+
+                resample(input, fromSampleRate, toSampleRate) {
+                    if (fromSampleRate === toSampleRate) {
+                        return input;
+                    }
+                    const ratio = toSampleRate / fromSampleRate;
+                    const outputLength = Math.round(input.length * ratio);
+                    const output = new Float32Array(outputLength);
+                    for (let i = 0; i < outputLength; i++) {
+                        const before = i / ratio;
+                        const ceil = Math.ceil(before);
+                        const floor = Math.floor(before);
+                        if (ceil >= input.length) {
+                            output[i] = input[input.length - 1];
+                            continue;
+                        }
+                        const frac = before - floor;
+                        output[i] = input[floor] * (1 - frac) + input[ceil] * frac;
+                    }
+                    return output;
+                }
+
+                to16BitPCM(input) {
+                    const output = new Int16Array(input.length);
+                    for (let i = 0; i < input.length; i++) {
+                        const s = Math.max(-1, Math.min(1, input[i]));
+                        output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                    }
+                    return output;
+                }
+
+                process(inputs, outputs, parameters) {
+                    const inputData = inputs[0][0];
+
+                    if (inputData) {
+                        const resampled = this.resample(inputData, sampleRate, this.targetSampleRate);
+                        const pcmData = this.to16BitPCM(resampled);
+                        this.port.postMessage(pcmData.buffer, [pcmData.buffer]);
+                    }
+                    return true;
+                }
+            }
+            registerProcessor('audio-processor', AudioProcessor);
+        `;
+
+        const audioProcessorBlob = new Blob([audioProcessorCode], { type: 'application/javascript' });
+        const audioProcessorUrl = URL.createObjectURL(audioProcessorBlob);
+
+
         startButton.onclick = async () => {
+            if (!isAuthenticated()) {
+                authStatusDiv.textContent = 'Please log in to start a call.';
+                updateAuthUI(); // Show login form if not authenticated
+                return;
+            }
+
             statusDiv.innerHTML = '<div class="dot-flashing"></div>';
             startButton.disabled = true;
             stopButton.disabled = false;
@@ -62,7 +260,6 @@
                 outputAudioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: OUTPUT_SAMPLE_RATE });
                 nextPlayTime = outputAudioContext.currentTime;
 
-                // Ensure audio contexts are resumed after user gesture
                 if (inputAudioContext.state === 'suspended') {
                     await inputAudioContext.resume();
                 }
@@ -70,9 +267,8 @@
                     await outputAudioContext.resume();
                 }
 
-                // 2. Load AudioWorklet module
-                // This requires a secure context (HTTPS or localhost)
-                await inputAudioContext.audioWorklet.addModule('audio-processor.js');
+                // 2. Load AudioWorklet module from Blob URL
+                await inputAudioContext.audioWorklet.addModule(audioProcessorUrl);
 
                 // 3. Get microphone access
                 mediaStream = await navigator.mediaDevices.getUserMedia({ 
@@ -80,7 +276,7 @@
                         echoCancellation: true,
                         noiseSuppression: true,
                         autoGainControl: true,
-                        sampleRate: inputAudioContext.sampleRate // Use native sample rate for capture
+                        sampleRate: inputAudioContext.sampleRate
                     }, 
                     video: false 
                 });
@@ -89,20 +285,18 @@
                 // 4. Create AudioWorkletNode
                 audioWorkletNode = new AudioWorkletNode(inputAudioContext, 'audio-processor');
                 audioWorkletNode.port.onmessage = (event) => {
-                    // Received processed 16-bit PCM audio from the worklet
                     if (websocket && websocket.readyState === WebSocket.OPEN) {
                         websocket.send(event.data);
                     }
                 };
-
-                // Connect stream to worklet
                 mediaStreamSource.connect(audioWorkletNode);
-                // Connect worklet to destination (not strictly necessary but keeps graph active)
                 audioWorkletNode.connect(inputAudioContext.destination);
 
-                // 5. Initialize WebSocket (Corrected URL)
+                // 5. Initialize WebSocket with Token
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                websocket = new WebSocket(`https://test.mhd12.dev/voice/stream`); // Uses current host and port
+                const host = window.location.host;
+                const accessToken = getAccessToken();
+                websocket = new WebSocket(`https://greensteps.devlix.org/voice/stream?token=${accessToken}`);
                 websocket.binaryType = 'arraybuffer';
 
                 websocket.onopen = () => {
@@ -110,7 +304,6 @@
                 };
 
                 websocket.onmessage = (event) => {
-                    // Received audio data from Gemini
                     const pcmData = new Int16Array(event.data);
                     audioQueue.push(pcmData);
                     if (!isPlaying) {
@@ -132,7 +325,7 @@
             } catch (err) {
                 console.error('Initialization Error:', err);
                 statusDiv.textContent = `Error: ${err.message || 'Could not start call.'}`;
-                stopCall(); // Ensure cleanup on error
+                stopCall();
             }
         };
         
@@ -157,7 +350,6 @@
             source.buffer = audioBuffer;
             source.connect(outputAudioContext.destination);
             
-            // Ensure playTime is not in the past
             const now = outputAudioContext.currentTime;
             const playTime = Math.max(now, nextPlayTime);
             
@@ -179,7 +371,6 @@
             }
             if (audioWorkletNode) {
                 audioWorkletNode.disconnect();
-                // If it has a port, close it.
                 if (audioWorkletNode.port) {
                     audioWorkletNode.port.close();
                 }
@@ -199,6 +390,9 @@
         }
 
         stopButton.onclick = stopCall;
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', updateAuthUI);
 
     </script>
 </body>

@@ -1,16 +1,40 @@
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import HTTPException
+from fastapi.exceptions import HTTPException, RequestValidationError
 from schemas.error import ErrorResponse
 
+def _normalize_error_detail(detail):
+    if isinstance(detail, dict) and "code" in detail and "message" in detail:
+        return detail
+    return {"code": "error", "message": str(detail)}
+
 async def http_exception_handler(request: Request, exc: HTTPException):
+    error_detail = _normalize_error_detail(exc.detail)
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error_text": exc.detail},
+        content=ErrorResponse(error=error_detail).model_dump(),
+        headers=exc.headers,
+    )
+
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content=ErrorResponse(
+            error={
+                "code": "validation_error",
+                "message": "Validation error",
+                "details": exc.errors(),
+            }
+        ).model_dump(),
     )
 
 async def generic_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"error_text": "Internal Server Error"},
+        content=ErrorResponse(
+            error={
+                "code": "internal_error",
+                "message": "Internal server error",
+            }
+        ).model_dump(),
     )
