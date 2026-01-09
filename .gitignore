@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual Environment
+venv/
+.venv/
+env/
+# Explicitly ignore common virtual environment directories, but allow specific files within them if needed
+# For instance, if you have a custom script in venv/bin, you might want to adjust
+# However, generally ignoring the entire venv directory is standard.
+*/bin/
+*/include/
+*/lib/
+.Python
+pip-autoremove.log
+
+# Editor/IDE files
+.vscode/        # VS Code specific files
+.idea/          # IntelliJ IDEA specific files
+*.swp           # Vim swap files
+*~              # Emacs backup files
+
+# OS/Temp files
+.DS_Store       # macOS specific
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.log           # Log files
+*.tmp           # Temporary files
+
+# Configuration/Secrets
+.env            # Environment variables file
+*.env
+
+# Build/Distribution
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Docker
+# Dockerfile and docker-compose.yml should generally be included in git
+# To ignore images or other docker related build artifacts:
+# .dockerignore should be used for specifying files/directories to ignore when building a Docker image.
+# You generally don't put build artifacts from Docker in .gitignore, as they are ephemeral.
+
+# AWS Lambda / Serverless (if applicable)
+.serverless/
+.terraform/
