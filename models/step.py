@@ -13,6 +13,7 @@ class Step(Base):
 
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
+    icon = Column(String, nullable=True, default="")
 
     # Manual ordering, starts from 1, YOU set it
     order = Column(Integer, nullable=False)

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from models import User, RefreshToken
+from models import User, RefreshToken, Impact, Step
 from core.security import hash_password, verify_password
 from utils.tokens import create_token, verify_token, hash_token
 from core.config import settings
@@ -174,4 +174,11 @@ def logout(db: Session, refresh_token: str):
             detail={"code": "invalid_refresh_token", "message": "Invalid refresh token"},
         )
     db.delete(token_record)
+    db.commit()
+
+def delete_account(db: Session, user: User):
+    db.query(Step).filter(Step.owner_id == user.id).delete(synchronize_session=False)
+    db.query(Impact).filter(Impact.owner_id == user.id).delete(synchronize_session=False)
+    db.query(RefreshToken).filter(RefreshToken.user_id == user.id).delete(synchronize_session=False)
+    db.delete(user)
     db.commit()

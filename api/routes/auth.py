@@ -4,7 +4,7 @@ from schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshTo
 from schemas.error import ErrorResponse
 from services import auth as auth_service
 from core.database import get_db
-from api.deps import get_current_user
+from api.deps import get_current_user, get_current_active_user
 
 router = APIRouter(prefix="/auth")
 
@@ -51,4 +51,16 @@ def refresh_token_endpoint(refresh_token_data: RefreshTokenRequest, db: Session 
 )
 def logout(logout_data: LogoutRequest, db: Session = Depends(get_db)):
     auth_service.logout(db, logout_data.refresh_token)
+    return StatusResponse(status="ok")
+
+@router.delete(
+    "/account",
+    response_model=StatusResponse,
+    responses={
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        404: {"model": ErrorResponse, "description": "User not found"},
+    },
+)
+def delete_account(user=Depends(get_current_active_user), db: Session = Depends(get_db)):
+    auth_service.delete_account(db, user)
     return StatusResponse(status="ok")

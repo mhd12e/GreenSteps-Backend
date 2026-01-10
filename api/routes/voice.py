@@ -1,8 +1,9 @@
+import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from google import genai
 import asyncio
 from sqlalchemy.orm import Session
-from models.user import User
+from models import User, Step, Impact
 from api.deps import get_current_active_user
 from core.database import get_db
 
@@ -63,20 +64,113 @@ async def receive_audio_from_gemini(session, websocket: WebSocket):
             break
 
 
-@router.websocket("/stream")
+@router.websocket("/stream/{step_id}")
 async def voice_stream(
+    step_id: str,
     websocket: WebSocket,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    step = (
+        db.query(Step)
+        .filter(Step.id == step_id, Step.owner_id == current_user.id)
+        .first()
+    )
+    if not step:
+        await websocket.accept()
+        await websocket.close(code=1008, reason="Step not found")
+        return
+
+    impact = (
+        db.query(Impact)
+        .filter(Impact.id == step.impact_id, Impact.owner_id == current_user.id)
+        .first()
+    )
+    if not impact:
+        await websocket.accept()
+        await websocket.close(code=1008, reason="Impact not found")
+        return
+
+    prev_step = (
+        db.query(Step)
+        .filter(
+            Step.impact_id == impact.id,
+            Step.owner_id == current_user.id,
+            Step.order == step.order - 1,
+        )
+        .first()
+    )
+    next_step = (
+        db.query(Step)
+        .filter(
+            Step.impact_id == impact.id,
+            Step.owner_id == current_user.id,
+            Step.order == step.order + 1,
+        )
+        .first()
+    )
+    total_steps = (
+        db.query(Step)
+        .filter(Step.impact_id == impact.id, Step.owner_id == current_user.id)
+        .count()
+    )
+
     await manager.connect(websocket)
 
+    context_payload = {
+        "user": {
+            "full_name": current_user.full_name,
+            "user_data": current_user.user_data or [],
+        },
+        "impact": {
+            "title": impact.title,
+            "description": impact.description,
+        },
+        "current_step": {
+            "order": step.order,
+            "title": step.title,
+            "description": step.description,
+            "icon": step.icon or "",
+        },
+        "previous_step": (
+            {
+                "order": prev_step.order,
+                "title": prev_step.title,
+                "description": prev_step.description,
+                "icon": prev_step.icon or "",
+            }
+            if prev_step
+            else None
+        ),
+        "next_step": (
+            {
+                "order": next_step.order,
+                "title": next_step.title,
+                "description": next_step.description,
+                "icon": next_step.icon or "",
+            }
+            if next_step
+            else None
+        ),
+        "progress": {
+            "current_order": step.order,
+            "total_steps": total_steps,
+        },
+    }
+
+    context_json = json.dumps(context_payload, ensure_ascii=True)
     CONFIG = {
         "response_modalities": ["AUDIO"],
-        "system_instruction": f"""
-You are a voice-based AI tutor. Your user's name is {current_user.full_name}.
-Speak naturally and casually to the user.
-"""
+        "system_instruction": (
+            "You are GreenSteps Voice Coach, a precise, high-signal tutor guiding the user "
+            "through sustainability steps. Keep responses concise, practical, and friendly. "
+            "Use the context JSON strictly; do not invent missing data. "
+            "Confirm understanding, suggest the next concrete action, and tie advice back to the "
+            "current step. If the user asks about other steps, anchor to previous/next only. "
+            "Avoid long preambles and avoid listing the entire plan. "
+            "Context JSON:\n"
+            f"{context_json}"
+        ),
     }
 
     if client is None:

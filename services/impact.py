@@ -90,15 +90,19 @@ def _validate_ai_payload(payload: dict) -> dict:
             raise ValueError("Step must be an object")
         step_title = step.get("title")
         step_description = step.get("descreption") or step.get("description")
+        step_icon = step.get("icon")
         if not isinstance(step_title, str) or not step_title.strip():
             raise ValueError("Step title missing")
         if not isinstance(step_description, str) or not step_description.strip():
             raise ValueError("Step descreption missing")
+        if not isinstance(step_icon, str) or not step_icon.strip():
+            raise ValueError("Step icon missing")
         parsed_steps.append(
             {
                 "order": order,
                 "title": step_title.strip()[:MAX_TITLE_LEN],
                 "description": step_description.strip()[:MAX_DESC_LEN],
+                "icon": step_icon.strip()[:MAX_TITLE_LEN],
             }
         )
 
@@ -128,7 +132,8 @@ You are generating a structured plan in JSON. Output ONLY valid JSON with this e
   "steps": {{
     "1": {{
       "title": "step title",
-      "descreption": "step full blown descreption"
+      "descreption": "step full blown descreption",
+      "icon": "fa-solid fa-recycle"
     }}
   }}
 }}
@@ -138,6 +143,7 @@ Rules:
 - Use 3 to 8 steps.
 - Steps must be actionable and ordered.
 - Keep descriptions concise but clear.
+- Provide a unique Font Awesome CSS class string for each step icon.
 """
     try:
         response = client.models.generate_content(
@@ -192,6 +198,7 @@ def create_impact_from_prompt(db: Session, user_id: str, topic: str):
             Step(
                 title=step["title"],
                 description=step["description"],
+                icon=step["icon"],
                 order=step["order"],
                 unlocked=step["order"] == 1,
                 owner_id=user_id,
@@ -202,3 +209,42 @@ def create_impact_from_prompt(db: Session, user_id: str, topic: str):
     db.commit()
     db.refresh(impact)
     return impact, steps
+
+
+def get_impact_with_steps(db: Session, user_id: str, impact_id: str):
+    impact = (
+        db.query(Impact)
+        .filter(Impact.id == impact_id, Impact.owner_id == user_id)
+        .first()
+    )
+    if not impact:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "impact_not_found", "message": "Impact not found"},
+        )
+    steps = (
+        db.query(Step)
+        .filter(Step.impact_id == impact.id, Step.owner_id == user_id)
+        .order_by(Step.order)
+        .all()
+    )
+    return impact, steps
+
+
+def delete_impact(db: Session, user_id: str, impact_id: str) -> str:
+    impact = (
+        db.query(Impact)
+        .filter(Impact.id == impact_id, Impact.owner_id == user_id)
+        .first()
+    )
+    if not impact:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "impact_not_found", "message": "Impact not found"},
+        )
+    db.query(Step).filter(Step.impact_id == impact.id, Step.owner_id == user_id).delete(
+        synchronize_session=False
+    )
+    db.delete(impact)
+    db.commit()
+    return str(impact.id)

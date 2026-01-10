@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.exceptions import HTTPException, RequestValidationError
 from mangum import Mangum
-from api.routes import auth, voice, impact
+from api.routes import auth, voice, impact, users
 from core.database import Base, engine
 from core.error_handling import http_exception_handler, generic_exception_handler, validation_exception_handler
 from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
@@ -57,5 +57,6 @@ app.add_exception_handler(Exception, generic_exception_handler)
 app.include_router(auth.router)
 app.include_router(voice.router)
 app.include_router(impact.router)
+app.include_router(users.router)
 
 handler = Mangum(app)
