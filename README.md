@@ -1,46 +1,70 @@
-# Project Name
+# GreenSteps
 
-This project is a simple web application designed for [briefly describe project purpose, e.g., "processing audio files and providing an API"].
+GreenSteps is a sustainability coaching platform that turns eco-goals into clear, step-by-step impact plans. Each step can launch a live voice coaching session for guidance and encouragement.
 
-## Configuration
+## Project Idea
+- Create practical sustainability plans from a topic in seconds.
+- Break each impact into actionable steps with icons and descriptions.
+- Offer live, voice-guided coaching for each step.
+- Personalize guidance using user profile data (full name, age, interests).
 
-To run this application, you need to set up your environment variables.
-1.  Copy the example environment file:
-    ```bash
-    cp example.env .env
-    ```
-2.  Edit the newly created `.env` file and replace the placeholder values with your actual configuration.
+## Features
+- JWT authentication with refresh tokens.
+- Impact generation with AI and structured validation.
+- Step-by-step impact navigation.
+- Live voice coaching via WebSocket audio streaming.
+- Profile editing (full name, age, interests).
+- Frontend health checks and auth heartbeat.
 
-    Example `.env` content:
-    ```
-    DATABASE_URL="postgresql://postgres:password@host:port/database_name"
-    SECRET_KEY="your_super_secret_key_here"
-    DEBUG=True
-    ```
+## Architecture
+- **Backend**: FastAPI + PostgreSQL.
+- **Frontend**: React + Vite.
+- **Voice**: WebSocket streaming with AI audio responses.
+- **Web**: Nginx serves the built frontend.
 
-## Deployment
+## Services
+- `api`: FastAPI backend
+- `db`: PostgreSQL database
+- `web`: Nginx serving the frontend build
 
-### Docker Deployment
+## Production URLs
+- Backend API: `https://greensteps-api.devlix.org`
 
-This project can be easily deployed using Docker.
+## Environment
+Copy `.env` from `example.env` and update values as needed.
 
-1.  **Build the Docker image:**
-    ```bash
-    docker build -t your-image-name .
-    ```
-2.  **Run the Docker container:**
-    ```bash
-    docker run -d -p 8000:8000 your-image-name
-    ```
-    (Adjust port mapping `-p 8000:8000` as needed)
+## Deployment (Docker)
+Build and run the full stack:
 
-Alternatively, you can use `docker-compose` for multi-service deployments (e.g., with a database).
+```bash
+docker compose up --build
+```
 
-1.  **Build and run with Docker Compose:**
-    ```bash
-    docker-compose up --build -d
-    ```
+The services will be available at:
+- Frontend: `http://localhost`
+- Backend: `http://localhost:8000`
 
-### AWS Deployment (General Guidelines)
+## Notes
+- The frontend is configured to use `https://greensteps-api.devlix.org` by default.
+- If you need a different API base, update `frontend/src/config.js`.
+- Reset the database if you removed or changed models (e.g., `user_data`).
 
-Comming Soon
+## Development (optional)
+Frontend dev server:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Backend dev server (outside Docker):
+
+```bash
+uvicorn main:app --reload
+```
+
+## API Reference
+FastAPI docs are available at:
+- `http://localhost:8000/docs`
+- `http://localhost:8000/redoc`
