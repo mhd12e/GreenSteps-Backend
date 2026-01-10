@@ -2,6 +2,10 @@
 
 GreenSteps is a sustainability coaching platform that turns eco-goals into clear, step-by-step impact plans. Each step can launch a live voice coaching session for guidance and encouragement.
 
+Current online servers:
+- Frontend: https://greensteps.devlix.org
+- Backend docs: https://greensteps-api.devlix.org/redoc
+
 ## Project Idea
 - Create practical sustainability plans from a topic in seconds.
 - Break each impact into actionable steps with icons and descriptions.
