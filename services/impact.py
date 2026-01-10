@@ -250,3 +250,13 @@ def delete_impact(db: Session, user_id: str, impact_id: str) -> str:
     db.delete(impact)
     db.commit()
     return str(impact.id)
+
+
+def list_impacts(db: Session, user_id: str) -> list[str]:
+    impact_ids = (
+        db.query(Impact.id)
+        .filter(Impact.owner_id == user_id)
+        .order_by(Impact.created_at.desc())
+        .all()
+    )
+    return [str(item[0]) for item in impact_ids]

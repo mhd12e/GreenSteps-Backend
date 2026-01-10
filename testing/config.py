@@ -2,7 +2,7 @@ import os
 
 BASE_URL = os.getenv(
     "TEST_BASE_URL",
-    "https://srbw4exe4rytwcswkagdlsaboe0eaaao.lambda-url.eu-central-1.on.aws",
+    "https://greensteps-api.devlix.org",
 ).rstrip("/")
 TIMEOUT_SECONDS = float(os.getenv("TEST_TIMEOUT_SECONDS", "15"))
 RUN_VOICE_TESTS = os.getenv("TEST_VOICE", "0") == "1"

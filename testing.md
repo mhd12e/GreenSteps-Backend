@@ -11,7 +11,7 @@ Before running the application, ensure you have the necessary environment variab
 Create a `.env` file in the project root with the following variables. Replace placeholder values with your actual database credentials and a strong JWT secret.
 
 ```dotenv
-DATABASE_URL="postgresql://user:password@host:port/database_name"
+DATABASE_URL="postgresql://postgres:password@host:port/database_name"
 JWT_SECRET="your_super_secret_jwt_key_here"
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7

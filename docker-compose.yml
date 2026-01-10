@@ -1,34 +1,53 @@
 services:
   db:
-    image: postgres:16
-    container_name: fastapi_db
+    image: postgres:18
+    container_name: greensteps_db
     restart: always
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
-      POSTGRES_DB: app
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: GreenSteps
     ports:
       - "5432:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - ./db_data:/var/lib/postgresql
+    networks:
+      - proxy
 
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: fastapi_api
+    container_name: greensteps_api
     restart: always
     env_file:
       - .env
     depends_on:
       - db
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     volumes:
-      - ./:/app      # <-- flat structure
+      - ./:/app
     environment:
       PYTHONUNBUFFERED: 1
       PYTHONDONTWRITEBYTECODE: 1
+    networks:
+      - proxy
 
-volumes:
-  db_data:
+  nginx_proxy_manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nginx_proxy_manager_green_step
+    restart: always
+    ports:
+      - "80:80"
+      - "81:81"
+      - "443:443"
+    volumes:
+      - ./npm/data:/data
+      - ./npm/letsencrypt:/etc/letsencrypt
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    driver: bridge

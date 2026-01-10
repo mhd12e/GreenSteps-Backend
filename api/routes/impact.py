@@ -7,6 +7,7 @@ from schemas.impact import (
     ImpactStepPayloadResponse,
     ImpactStepResponse,
     ImpactPayloadResponse,
+    ImpactListResponse,
 )
 from schemas.error import ErrorResponse
 from schemas.common import Envelope
@@ -15,6 +16,20 @@ from core.database import get_db
 from api.deps import get_current_active_user, rate_limit_user
 
 router = APIRouter(prefix="/impact", tags=["impact"])
+
+
+@router.get(
+    "",
+    response_model=Envelope[ImpactListResponse],
+    dependencies=[Depends(rate_limit_user)],
+    responses={401: {"model": ErrorResponse, "description": "Not authenticated"}},
+)
+def list_impacts(
+    current_user=Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    impact_ids = impact_service.list_impacts(db, current_user.id)
+    return Envelope(data=ImpactListResponse(impact_ids=impact_ids))
 
 
 @router.post(
@@ -78,6 +93,7 @@ def get_impact_payload(
     }
     return Envelope(
         data=ImpactPayloadResponse(
+            id=str(impact.id),
             title=impact.title,
             descreption=impact.description,
             steps=payload_steps,

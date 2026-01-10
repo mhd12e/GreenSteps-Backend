@@ -1,5 +1,7 @@
 import uuid
+from pathlib import Path
 from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse
 from fastapi.exceptions import HTTPException, RequestValidationError
 from mangum import Mangum
 from api.routes import auth, voice, impact, users, system
@@ -20,7 +22,7 @@ app = FastAPI(
     openapi_url="/openapi.json",
     servers=[
         {
-            "url": "https://srbw4exe4rytwcswkagdlsaboe0eaaao.lambda-url.eu-central-1.on.aws",
+            "url": "https://greensteps-api.devlix.org/test",
             "description": "Production server",
         }
     ],
@@ -63,6 +65,13 @@ app.include_router(voice.router)
 app.include_router(impact.router)
 app.include_router(users.router)
 app.include_router(system.router)
+
+INDEX_PATH = Path(__file__).with_name("index.html")
+
+
+@app.get("/test", include_in_schema=False)
+def serve_test_console():
+    return FileResponse(INDEX_PATH, media_type="text/html")
 
 # AWS Lambda entrypoint.
 handler = Mangum(app)

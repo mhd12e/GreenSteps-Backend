@@ -329,9 +329,14 @@
             <input id="loadImpactId" type="text" placeholder="Impact id" />
             <button class="btn ghost" id="loadImpact">Load impact</button>
           </div>
+          <div class="row">
+            <button class="btn ghost" id="listImpacts">Load my impact IDs</button>
+          </div>
         </div>
         <div class="stack" style="margin-top: 16px;">
           <div class="status" id="impactStatus">No impact loaded.</div>
+          <div class="status" id="impactListStatus">No impact list loaded.</div>
+          <div id="impactList" class="list"></div>
           <div id="impactView" class="list"></div>
         </div>
       </section>
@@ -391,6 +396,9 @@
     const generateImpact = document.getElementById("generateImpact");
     const loadImpactId = document.getElementById("loadImpactId");
     const loadImpact = document.getElementById("loadImpact");
+    const listImpacts = document.getElementById("listImpacts");
+    const impactList = document.getElementById("impactList");
+    const impactListStatus = document.getElementById("impactListStatus");
 
     const userDataInput = document.getElementById("userDataInput");
     const appendUserData = document.getElementById("appendUserData");
@@ -464,6 +472,8 @@
         authState.style.background = "rgba(239,124,142,0.15)";
         authState.style.color = "var(--rose)";
         logoutBtn.classList.add("hidden");
+        impactList.innerHTML = "";
+        setStatus(impactListStatus, "No impact list loaded.");
       }
     }
 
@@ -562,6 +572,7 @@
         });
         setTokens(data.access_token, data.refresh_token);
         setStatus(authStatus, "Login successful.");
+        await fetchImpactIds();
       } catch (error) {
         setStatus(authStatus, `Login failed: ${error.message}`);
       }
@@ -606,27 +617,18 @@
         });
         renderImpact(data);
         setStatus(impactStatus, "Impact ready.");
+        await fetchImpactIds();
       } catch (error) {
         setStatus(impactStatus, `Generate failed: ${error.message}`);
       }
     });
 
     loadImpact.addEventListener("click", async () => {
-      if (!accessToken) {
-        setStatus(impactStatus, "Login first.");
-        return;
-      }
-      try {
-        setStatus(impactStatus, "Loading impact...");
-        const data = await apiRequest(`/impact/${loadImpactId.value}`, {
-          method: "GET",
-          auth: true,
-        });
-        renderImpactPayload(loadImpactId.value, data);
-        setStatus(impactStatus, "Impact loaded.");
-      } catch (error) {
-        setStatus(impactStatus, `Load failed: ${error.message}`);
-      }
+      await loadImpactById(loadImpactId.value);
+    });
+
+    listImpacts.addEventListener("click", async () => {
+      await fetchImpactIds();
     });
 
     appendUserData.addEventListener("click", async () => {
@@ -701,10 +703,11 @@
 
     function renderImpactPayload(impactId, data) {
       impactView.innerHTML = "";
+      const resolvedId = data.id || impactId;
       const wrapper = document.createElement("div");
       wrapper.className = "card";
       wrapper.innerHTML = `
-        <div class="pill">Impact ID: ${impactId}</div>
+        <div class="pill">Impact ID: ${resolvedId}</div>
         <h3>${data.title}</h3>
         <p style="color: var(--muted);">${data.descreption}</p>
       `;
@@ -730,7 +733,72 @@
       });
       wrapper.appendChild(stepsList);
       impactView.appendChild(wrapper);
-      loadImpactId.value = impactId;
+      loadImpactId.value = resolvedId;
+    }
+
+    async function loadImpactById(impactId) {
+      if (!accessToken) {
+        setStatus(impactStatus, "Login first.");
+        return;
+      }
+      const trimmedId = impactId.trim();
+      if (!trimmedId) {
+        setStatus(impactStatus, "Enter an impact id.");
+        return;
+      }
+      try {
+        setStatus(impactStatus, "Loading impact...");
+        const data = await apiRequest(`/impact/${trimmedId}`, {
+          method: "GET",
+          auth: true,
+        });
+        renderImpactPayload(data.id || trimmedId, data);
+        setStatus(impactStatus, "Impact loaded.");
+      } catch (error) {
+        setStatus(impactStatus, `Load failed: ${error.message}`);
+      }
+    }
+
+    async function fetchImpactIds() {
+      if (!accessToken) {
+        setStatus(impactListStatus, "Login first.");
+        return;
+      }
+      try {
+        setStatus(impactListStatus, "Loading impact list...");
+        const data = await apiRequest("/impact", {
+          method: "GET",
+          auth: true,
+        });
+        renderImpactList(data.impact_ids || []);
+      } catch (error) {
+        setStatus(impactListStatus, `List failed: ${error.message}`);
+      }
+    }
+
+    function renderImpactList(ids) {
+      impactList.innerHTML = "";
+      if (!ids.length) {
+        setStatus(impactListStatus, "No impacts yet.");
+        return;
+      }
+      setStatus(impactListStatus, `Loaded ${ids.length} impacts.`);
+      ids.forEach((impactId) => {
+        const item = document.createElement("div");
+        item.className = "card";
+        item.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+            <div style="font-weight: 600;">${impactId}</div>
+            <button class="btn ghost">Load</button>
+          </div>
+        `;
+        const button = item.querySelector("button");
+        button.addEventListener("click", async () => {
+          loadImpactId.value = impactId;
+          await loadImpactById(impactId);
+        });
+        impactList.appendChild(item);
+      });
     }
 
     async function startVoiceSession() {
@@ -873,8 +941,11 @@
       setApiBase(event.target.value);
     });
 
-    const savedBase = localStorage.getItem(API_BASE_KEY) || "https://srbw4exe4rytwcswkagdlsaboe0eaaao.lambda-url.eu-central-1.on.aws";
-    setApiBase(savedBase);
+    const savedBase = localStorage.getItem(API_BASE_KEY);
+    const originBase = window.location.origin !== "null" ? window.location.origin : "";
+    const fallbackBase = "https://srbw4exe4rytwcswkagdlsaboe0eaaao.lambda-url.eu-central-1.on.aws";
+    const defaultBase = originBase || savedBase || fallbackBase;
+    setApiBase(defaultBase);
     updateAuthState();
   </script>
 </body>

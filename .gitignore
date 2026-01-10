@@ -38,6 +38,9 @@ Thumbs.db
 .env            # Environment variables file
 *.env
 
+# Nginx Proxy Manager
+npm/
+
 # Build/Distribution
 dist/
 build/

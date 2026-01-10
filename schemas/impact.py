@@ -32,6 +32,7 @@ class ImpactStepPayloadResponse(BaseModel):
 
 
 class ImpactPayloadResponse(BaseModel):
+    id: str
     title: str
     descreption: str
     steps: dict[int, ImpactStepPayloadResponse]
@@ -39,3 +40,7 @@ class ImpactPayloadResponse(BaseModel):
 
 class ImpactDeleteData(BaseModel):
     impact_id: str
+
+
+class ImpactListResponse(BaseModel):
+    impact_ids: list[str]

@@ -13,7 +13,7 @@ To run this application, you need to set up your environment variables.
 
     Example `.env` content:
     ```
-    DATABASE_URL="postgresql://user:password@host:port/database_name"
+    DATABASE_URL="postgresql://postgres:password@host:port/database_name"
     SECRET_KEY="your_super_secret_key_here"
     DEBUG=True
     ```

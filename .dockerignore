@@ -1,0 +1,30 @@
+# Docker stuff
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Local data (IMPORTANT)
+db_data/
+npm/
+
+# Node junk (if any)
+node_modules/
+
+# Env files (never bake secrets)
+.env
+
+# OS noise
+.DS_Store
+Thumbs.db
