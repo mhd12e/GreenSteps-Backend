@@ -54,7 +54,7 @@ Registers a new user with an email and password.
 -   **Endpoint**: `/auth/register`
 -   **Method**: `POST`
 -   **Request Body**: `RegisterRequest` (email, password)
--   **Success Response**: `StatusResponse` (status: "ok")
+-   **Success Response**: `Envelope[None]`
 -   **Error Response**: `ErrorResponse` (error_text)
 
 **Example Request:**
@@ -69,7 +69,8 @@ curl -X POST http://127.0.0.1:8000/auth/register \
 
 ```json
 {
-  "status": "ok"
+  "status": "ok",
+  "data": null
 }
 ```
 
@@ -82,7 +83,7 @@ Authenticates a user and provides access and refresh tokens.
 -   **Endpoint**: `/auth/login`
 -   **Method**: `POST`
 -   **Request Body**: `LoginRequest` (email, password)
--   **Success Response**: `TokenResponse` (access_token, refresh_token, token_type)
+-   **Success Response**: `Envelope[TokenResponse]`
 -   **Error Response**: `ErrorResponse` (error_text) - e.g., "Incorrect email or password" (Status: 401 Unauthorized)
 
 **Example Request:**
@@ -97,9 +98,12 @@ curl -X POST http://127.0.0.1:8000/auth/login \
 
 ```json
 {
-  "access_token": "your_access_token_here",
-  "refresh_token": "your_refresh_token_here",
-  "token_type": "bearer"
+  "status": "ok",
+  "data": {
+    "access_token": "your_access_token_here",
+    "refresh_token": "your_refresh_token_here",
+    "token_type": "bearer"
+  }
 }
 ```
 
@@ -120,7 +124,7 @@ Uses a refresh token to obtain a new access token.
 -   **Endpoint**: `/auth/refresh`
 -   **Method**: `POST`
 -   **Request Body**: `RefreshTokenRequest` (refresh_token)
--   **Success Response**: `AccessTokenResponse` (access_token, token_type)
+-   **Success Response**: `Envelope[TokenResponse]`
 -   **Error Response**: `ErrorResponse` (error_text) - e.g., "Not authenticated" or "Invalid refresh token" (Status: 401 Unauthorized)
 
 **Example Request:**
@@ -136,8 +140,12 @@ curl -X POST http://127.0.0.1:8000/auth/refresh \
 
 ```json
 {
-  "access_token": "your_new_access_token_here",
-  "token_type": "bearer"
+  "status": "ok",
+  "data": {
+    "access_token": "your_new_access_token_here",
+    "refresh_token": "your_new_refresh_token_here",
+    "token_type": "bearer"
+  }
 }
 ```
 
@@ -158,7 +166,7 @@ Accesses a protected resource using an access token.
 -   **Endpoint**: `/auth/protected`
 -   **Method**: `GET`
 -   **Request Headers**: `Authorization: Bearer <ACCESS_TOKEN>`
--   **Success Response**: JSON with user ID
+-   **Success Response**: `Envelope[ProtectedResponse]`
 -   **Error Response**: `ErrorResponse` (error_text) - e.g., "Not authenticated" (Status: 401 Unauthorized)
 
 **Example Request:**
@@ -173,7 +181,10 @@ curl -X GET http://127.0.0.1:8000/auth/protected \
 
 ```json
 {
-  "user_id": "uuid_of_the_authenticated_user"
+  "status": "ok",
+  "data": {
+    "user_id": "uuid_of_the_authenticated_user"
+  }
 }
 ```
 

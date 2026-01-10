@@ -1,12 +1,11 @@
-from fastapi import FastAPI
+import uuid
+from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException, RequestValidationError
 from mangum import Mangum
-from api.routes import auth, voice, impact, users
+from api.routes import auth, voice, impact, users, system
 from core.database import Base, engine
 from core.error_handling import http_exception_handler, generic_exception_handler, validation_exception_handler
 from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
-
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="GreenSteps API",
@@ -14,7 +13,6 @@ app = FastAPI(
         "GreenSteps API powers the GreenSteps platform.\n\n"
         "It provides secure authentication, user management, and AI-powered services "
         "with a focus on scalability, performance, and clean architecture.\n\n"
-        "Production server: https://proj.devlix.org"
     ),
     version="1.0.0",
     docs_url="/docs",
@@ -22,8 +20,8 @@ app = FastAPI(
     openapi_url="/openapi.json",
     servers=[
         {
-            "url": "https://greensteps.devlix.org",
-            "description": "Testing server",
+            "url": "https://srbw4exe4rytwcswkagdlsaboe0eaaao.lambda-url.eu-central-1.on.aws",
+            "description": "Production server",
         }
     ],
     contact={
@@ -35,20 +33,26 @@ app = FastAPI(
     },
 )
 
-# Add CORS middleware
-origins = [
-    "http://localhost",
-    "http://localhost:8001", # Allow frontend running on localhost:8001
-    "https://greensteps.devlix.org" # Allow testing server
-]
+@app.on_event("startup")
+def on_startup():
+    # Optional: only if you REALLY want auto-create tables
+    Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
@@ -58,5 +62,7 @@ app.include_router(auth.router)
 app.include_router(voice.router)
 app.include_router(impact.router)
 app.include_router(users.router)
+app.include_router(system.router)
 
+# AWS Lambda entrypoint.
 handler = Mangum(app)

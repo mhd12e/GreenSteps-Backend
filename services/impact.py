@@ -5,6 +5,7 @@ from google import genai
 from google.genai.errors import ClientError
 from models import Impact, Step
 from core.config import settings
+from core.logging import logger
 
 MODEL = settings.IMPACT_MODEL
 MAX_STEPS = 12
@@ -13,8 +14,8 @@ MAX_DESC_LEN = 400
 
 try:
     client = genai.Client()
-except Exception as e:
-    print(f"CRITICAL: Failed to create Google GenAI client: {e}")
+except Exception:
+    logger.exception("Failed to create Google GenAI client")
     client = None
 
 
@@ -152,6 +153,7 @@ Rules:
             config={"response_mime_type": "application/json"},
         )
     except ClientError as exc:
+        logger.warning("AI model unavailable: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={"code": "ai_unavailable", "message": "AI model unavailable"},

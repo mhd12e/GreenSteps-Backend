@@ -4,16 +4,18 @@ from google import genai
 import asyncio
 from sqlalchemy.orm import Session
 from models import User, Step, Impact
-from api.deps import get_current_active_user
 from core.database import get_db
+from core.logging import logger
+from utils.tokens import verify_token
+from fastapi import HTTPException
 
-router = APIRouter(prefix="/voice")
+router = APIRouter(prefix="/voice", tags=["voice"])
 
 # --- Module-level Google GenAI client ---
 try:
     client = genai.Client()
-except Exception as e:
-    print(f"CRITICAL: Failed to create Google GenAI client: {e}")
+except Exception:
+    logger.exception("Failed to create Google GenAI client")
     client = None
 
 MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
@@ -60,17 +62,49 @@ async def receive_audio_from_gemini(session, websocket: WebSocket):
                     if part.inline_data and isinstance(part.inline_data.data, bytes):
                         await manager.send_audio_to_client(part.inline_data.data, websocket)
         except Exception as e:
-            print(f"Error receiving from Gemini: {e}")
+            logger.exception("Error receiving from Gemini")
             break
+
+
+def _get_bearer_token(websocket: WebSocket) -> str | None:
+    auth_header = websocket.headers.get("authorization")
+    if not auth_header:
+        return None
+    parts = auth_header.split()
+    if len(parts) == 2 and parts[0].lower() == "bearer":
+        return parts[1]
+    return None
 
 
 @router.websocket("/stream/{step_id}")
 async def voice_stream(
     step_id: str,
     websocket: WebSocket,
-    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    token = websocket.query_params.get("token") or _get_bearer_token(websocket)
+    if not token:
+        await websocket.accept()
+        await websocket.close(code=1008, reason="Not authenticated")
+        return
+    try:
+        payload = verify_token(token)
+    except HTTPException:
+        await websocket.accept()
+        await websocket.close(code=1008, reason="Not authenticated")
+        return
+    user_id = payload.get("sub")
+    if not user_id:
+        await websocket.accept()
+        await websocket.close(code=1008, reason="Not authenticated")
+        return
+
+    current_user = db.query(User).filter(User.id == user_id).first()
+    if not current_user:
+        await websocket.accept()
+        await websocket.close(code=1008, reason="User not found")
+        return
+
     step = (
         db.query(Step)
         .filter(Step.id == step_id, Step.owner_id == current_user.id)
@@ -117,6 +151,7 @@ async def voice_stream(
 
     await manager.connect(websocket)
 
+    # Structured context keeps the model grounded in the current step.
     context_payload = {
         "user": {
             "full_name": current_user.full_name,
@@ -174,13 +209,13 @@ async def voice_stream(
     }
 
     if client is None:
-        print("Closing connection: Google GenAI client is not available.")
+        logger.error("Closing connection: Google GenAI client is not available")
         await websocket.close(code=1011, reason="Server configuration error for AI client")
         return
 
     try:
         async with client.aio.live.connect(model=MODEL, config=CONFIG) as live_session:
-            print("Gemini Live session started.")
+            logger.info("Gemini Live session started")
             audio_queue_from_client = asyncio.Queue()
 
             async with asyncio.TaskGroup() as tg:
@@ -193,9 +228,9 @@ async def voice_stream(
                     await audio_queue_from_client.put(audio_chunk)
 
     except WebSocketDisconnect:
-        print("Client disconnected.")
-    except Exception as e:
-        print(f"An error occurred in the voice stream: {e}")
+        logger.info("Client disconnected")
+    except Exception:
+        logger.exception("An error occurred in the voice stream")
     finally:
         manager.disconnect(websocket)
-        print("Connection closed and cleaned up.")
+        logger.info("Connection closed and cleaned up")

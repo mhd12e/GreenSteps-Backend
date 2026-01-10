@@ -1,3 +1,4 @@
 from aws_lambda_powertools import Logger
+from core.config import settings
 
-logger = Logger(service="auth-service")
+logger = Logger(service=settings.SERVICE_NAME)

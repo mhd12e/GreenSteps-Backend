@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from api.deps import get_current_active_user
+from api.deps import get_current_active_user, rate_limit_user
 from core.database import get_db
 from schemas.user import UserDataItemRequest, UserDataResponse
 from schemas.error import ErrorResponse
+from schemas.common import Envelope
 from services import user_data as user_data_service
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -11,7 +12,8 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.post(
     "/me/user-data",
-    response_model=UserDataResponse,
+    response_model=Envelope[UserDataResponse],
+    dependencies=[Depends(rate_limit_user)],
     responses={
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         404: {"model": ErrorResponse, "description": "User not found"},
@@ -23,12 +25,13 @@ def append_user_data(
     db: Session = Depends(get_db),
 ):
     updated = user_data_service.append_user_data(db, user, payload.item)
-    return UserDataResponse(user_data=updated)
+    return Envelope(data=UserDataResponse(user_data=updated))
 
 
 @router.delete(
     "/me/user-data",
-    response_model=UserDataResponse,
+    response_model=Envelope[UserDataResponse],
+    dependencies=[Depends(rate_limit_user)],
     responses={
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         404: {"model": ErrorResponse, "description": "User not found or item not found"},
@@ -40,4 +43,4 @@ def delete_user_data(
     db: Session = Depends(get_db),
 ):
     updated = user_data_service.remove_user_data(db, user, payload.item)
-    return UserDataResponse(user_data=updated)
+    return Envelope(data=UserDataResponse(user_data=updated))

@@ -2,6 +2,9 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://user:pass@localhost:5432/app"
+    SERVICE_NAME: str = "greensteps-api"
+    RATE_LIMIT_PER_MINUTE: int = 60
+    RATE_LIMIT_IP_PER_MINUTE: int = 30
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15

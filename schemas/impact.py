@@ -1,21 +1,16 @@
-from pydantic import BaseModel, field_validator
+from typing import Annotated
+from pydantic import BaseModel, StringConstraints
 
 
 class ImpactGenerateRequest(BaseModel):
-    topic: str
-
-    @field_validator("topic")
-    @classmethod
-    def normalize_topic(cls, value: str) -> str:
-        value = value.strip()
-        if len(value) < 3:
-            raise ValueError("topic must be at least 3 characters")
-        if len(value) > 200:
-            raise ValueError("topic must be at most 200 characters")
-        return value
+    topic: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=3, max_length=200),
+    ]
 
 
 class ImpactStepResponse(BaseModel):
+    id: str
     order: int
     title: str
     description: str
@@ -30,6 +25,7 @@ class ImpactResponse(BaseModel):
 
 
 class ImpactStepPayloadResponse(BaseModel):
+    id: str
     title: str
     descreption: str
     icon: str
@@ -41,6 +37,5 @@ class ImpactPayloadResponse(BaseModel):
     steps: dict[int, ImpactStepPayloadResponse]
 
 
-class ImpactDeleteResponse(BaseModel):
-    status: str
+class ImpactDeleteData(BaseModel):
     impact_id: str

@@ -38,3 +38,7 @@ class AccessTokenResponse(BaseModel):
 
 class StatusResponse(BaseModel):
     status: str
+
+
+class ProtectedResponse(BaseModel):
+    user_id: str
