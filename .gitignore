@@ -37,6 +37,7 @@ Thumbs.db
 # Configuration/Secrets
 .env            # Environment variables file
 *.env
+!example.env
 
 # Nginx Proxy Manager
 npm/
@@ -46,6 +47,17 @@ dist/
 build/
 *.egg-info/
 .eggs/
+
+# Node.js
+node_modules/
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local data
+db_data/
 
 # Docker
 # Dockerfile and docker-compose.yml should generally be included in git

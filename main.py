@@ -22,7 +22,7 @@ app = FastAPI(
     openapi_url="/openapi.json",
     servers=[
         {
-            "url": "https://greensteps-api.devlix.org/test",
+            "url": "https://greensteps-api.devlix.org",
             "description": "Production server",
         }
     ],

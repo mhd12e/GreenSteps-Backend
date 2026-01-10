@@ -3,11 +3,13 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from google import genai
 import asyncio
 from sqlalchemy.orm import Session
-from models import User, Step, Impact
+from models import User
 from core.database import get_db
 from core.logging import logger
-from utils.tokens import verify_token
+from utils.tokens import verify_access_token
 from fastapi import HTTPException
+from websockets.exceptions import ConnectionClosed
+from services.voice_context import load_step_context, build_context_payload
 
 router = APIRouter(prefix="/voice", tags=["voice"])
 
@@ -61,6 +63,9 @@ async def receive_audio_from_gemini(session, websocket: WebSocket):
                 for part in model_turn.parts:
                     if part.inline_data and isinstance(part.inline_data.data, bytes):
                         await manager.send_audio_to_client(part.inline_data.data, websocket)
+        except ConnectionClosed:
+            logger.info("Gemini connection closed")
+            break
         except Exception as e:
             logger.exception("Error receiving from Gemini")
             break
@@ -88,7 +93,7 @@ async def voice_stream(
         await websocket.close(code=1008, reason="Not authenticated")
         return
     try:
-        payload = verify_token(token)
+        payload = verify_access_token(token)
     except HTTPException:
         await websocket.accept()
         await websocket.close(code=1008, reason="Not authenticated")
@@ -105,93 +110,17 @@ async def voice_stream(
         await websocket.close(code=1008, reason="User not found")
         return
 
-    step = (
-        db.query(Step)
-        .filter(Step.id == step_id, Step.owner_id == current_user.id)
-        .first()
-    )
-    if not step:
+    try:
+        context = load_step_context(db, current_user, step_id)
+    except HTTPException as exc:
         await websocket.accept()
-        await websocket.close(code=1008, reason="Step not found")
+        await websocket.close(code=1008, reason=exc.detail.get("message", "Not found"))
         return
-
-    impact = (
-        db.query(Impact)
-        .filter(Impact.id == step.impact_id, Impact.owner_id == current_user.id)
-        .first()
-    )
-    if not impact:
-        await websocket.accept()
-        await websocket.close(code=1008, reason="Impact not found")
-        return
-
-    prev_step = (
-        db.query(Step)
-        .filter(
-            Step.impact_id == impact.id,
-            Step.owner_id == current_user.id,
-            Step.order == step.order - 1,
-        )
-        .first()
-    )
-    next_step = (
-        db.query(Step)
-        .filter(
-            Step.impact_id == impact.id,
-            Step.owner_id == current_user.id,
-            Step.order == step.order + 1,
-        )
-        .first()
-    )
-    total_steps = (
-        db.query(Step)
-        .filter(Step.impact_id == impact.id, Step.owner_id == current_user.id)
-        .count()
-    )
 
     await manager.connect(websocket)
 
     # Structured context keeps the model grounded in the current step.
-    context_payload = {
-        "user": {
-            "full_name": current_user.full_name,
-            "user_data": current_user.user_data or [],
-        },
-        "impact": {
-            "title": impact.title,
-            "description": impact.description,
-        },
-        "current_step": {
-            "order": step.order,
-            "title": step.title,
-            "description": step.description,
-            "icon": step.icon or "",
-        },
-        "previous_step": (
-            {
-                "order": prev_step.order,
-                "title": prev_step.title,
-                "description": prev_step.description,
-                "icon": prev_step.icon or "",
-            }
-            if prev_step
-            else None
-        ),
-        "next_step": (
-            {
-                "order": next_step.order,
-                "title": next_step.title,
-                "description": next_step.description,
-                "icon": next_step.icon or "",
-            }
-            if next_step
-            else None
-        ),
-        "progress": {
-            "current_order": step.order,
-            "total_steps": total_steps,
-        },
-    }
+    context_payload = build_context_payload(current_user, context)
 
     context_json = json.dumps(context_payload, ensure_ascii=True)
     CONFIG = {
@@ -200,12 +129,17 @@ async def voice_stream(
             "You are GreenSteps Voice Coach, a precise, high-signal tutor guiding the user "
             "through sustainability steps. Keep responses concise, practical, and friendly. "
             "Use the context JSON strictly; do not invent missing data. "
+            "Tailor explanations to the user's age and interests so guidance is easy to understand. "
+            "Address the user by name when appropriate. "
+            "This session is private and has zero logging; do not state otherwise. "
             "Confirm understanding, suggest the next concrete action, and tie advice back to the "
             "current step. If the user asks about other steps, anchor to previous/next only. "
             "Avoid long preambles and avoid listing the entire plan. "
-            "Your name is خضرة, always pronounce that in arabic."
-            "Say in the biggening أاااانيي خضرة in a long pronounciation funny way long long pronounciation"
-            "If user shifts topics or tells you about somthing unrelated dont agree and respond."
+            "Your name is 'GreenSteps Virtual Assistant', always pronounce that in english. "
+            "If user shifts topics or tells you about something unrelated, don't agree and redirect. "
+            "If the user asks to go to the next or previous step, explain that they can click the "
+            "'Next Step' or 'Previous Step' button they see on the screen to navigate. "
+            "Do not attempt to change steps programmatically; always direct them to use the UI buttons. "
             "Context JSON:\n"
             f"{context_json}"
         ),
@@ -216,24 +150,35 @@ async def voice_stream(
         await websocket.close(code=1011, reason="Server configuration error for AI client")
         return
 
+    send_task = None
+    receive_task = None
     try:
         async with client.aio.live.connect(model=MODEL, config=CONFIG) as live_session:
             logger.info("Gemini Live session started")
             audio_queue_from_client = asyncio.Queue()
 
-            async with asyncio.TaskGroup() as tg:
-                tg.create_task(send_audio_to_gemini(live_session, audio_queue_from_client))
-                tg.create_task(receive_audio_from_gemini(live_session, websocket))
+            send_task = asyncio.create_task(
+                send_audio_to_gemini(live_session, audio_queue_from_client)
+            )
+            receive_task = asyncio.create_task(
+                receive_audio_from_gemini(live_session, websocket)
+            )
 
-                # Receive audio from client and queue it
-                while True:
+            # Receive audio from client and queue it
+            while True:
+                try:
                     audio_chunk = await websocket.receive_bytes()
-                    await audio_queue_from_client.put(audio_chunk)
+                except WebSocketDisconnect:
+                    logger.info("Client disconnected")
+                    break
+                await audio_queue_from_client.put(audio_chunk)
 
-    except WebSocketDisconnect:
-        logger.info("Client disconnected")
     except Exception:
         logger.exception("An error occurred in the voice stream")
     finally:
-        manager.disconnect(websocket)
+        for task in (send_task, receive_task):
+            if task is not None:
+                task.cancel()
+        if websocket in manager.active_connections:
+            manager.disconnect(websocket)
         logger.info("Connection closed and cleaned up")

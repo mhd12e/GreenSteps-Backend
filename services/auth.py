@@ -4,7 +4,12 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from models import User, RefreshToken, Impact, Step
 from core.security import hash_password, verify_password
-from utils.tokens import create_token, verify_token, hash_token
+from utils.tokens import (
+    create_access_token,
+    create_refresh_token,
+    verify_refresh_token,
+    hash_token,
+)
 from core.config import settings
 from fastapi import HTTPException, status
 
@@ -67,11 +72,11 @@ def login(db: Session, email: str, password: str):
     if not user or not verify_password(password, user.password_hash):
         return None
 
-    access = create_token(
+    access = create_access_token(
         str(user.id),
         timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    refresh = create_token(
+    refresh = create_refresh_token(
         str(user.id),
         timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     )
@@ -88,7 +93,7 @@ def login(db: Session, email: str, password: str):
 
 def refresh(db: Session, refresh_token: str):
     try:
-        payload = verify_token(refresh_token)
+        payload = verify_refresh_token(refresh_token)
     except HTTPException:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -127,11 +132,11 @@ def refresh(db: Session, refresh_token: str):
     db.delete(token_record)
     _prune_refresh_tokens(db, user.id)
 
-    new_access_token = create_token(
+    new_access_token = create_access_token(
         str(user.id),
         timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    new_refresh_token = create_token(
+    new_refresh_token = create_refresh_token(
         str(user.id),
         timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     )
@@ -147,7 +152,7 @@ def refresh(db: Session, refresh_token: str):
 
 def logout(db: Session, refresh_token: str):
     try:
-        payload = verify_token(refresh_token)
+        payload = verify_refresh_token(refresh_token)
     except HTTPException:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

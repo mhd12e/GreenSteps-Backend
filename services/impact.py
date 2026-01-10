@@ -3,11 +3,11 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from google import genai
 from google.genai.errors import ClientError
-from models import Impact, Step
+from models import Impact, Step, User
 from core.config import settings
 from core.logging import logger
 
-MODEL = settings.IMPACT_MODEL
+MODEL = settings.IMPACT_GENERATION_MODEL
 MAX_STEPS = 12
 MAX_TITLE_LEN = 120
 MAX_DESC_LEN = 400
@@ -118,12 +118,15 @@ def _validate_ai_payload(payload: dict) -> dict:
     return {"title": title, "description": description, "steps": parsed_steps}
 
 
-def _generate_impact_payload(topic: str) -> tuple[dict, str]:
+def _generate_impact_payload(topic: str, user: User) -> tuple[dict, str]:
     if client is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={"code": "ai_unavailable", "message": "AI client not available"},
         )
+    user_name = user.full_name
+    user_age = user.age
+    user_interests = ", ".join(user.interests or [])
     prompt = f"""
 You are a sustainability expert, totur, you will help the user optimize and make there setup sustainable and safe on the environment.
 You are generating a structured plan in JSON. Output ONLY valid JSON with this exact shape:
@@ -140,11 +143,18 @@ You are generating a structured plan in JSON. Output ONLY valid JSON with this e
 }}
 
 User input Topic: {topic}
+User Profile:
+- Full Name: {user_name}
+- Age: {user_age}
+- Interests: {user_interests}
 Rules:
-- Use 3 to 8 steps.
+- Use 3 to 8 steps strictly.
 - Steps must be actionable and ordered.
 - Keep descriptions concise but clear.
 - Provide a unique Font Awesome CSS class string for each step icon.
+Tone rules:
+- Tailor explanations to the user's age and interests so guidance is easy to understand.
+- This session is private and has zero logging; do not state otherwise.
 """
     try:
         response = client.models.generate_content(
@@ -162,16 +172,16 @@ Rules:
     return _extract_json(text), text
 
 
-def create_impact_from_prompt(db: Session, user_id: str, topic: str):
+def create_impact_from_prompt(db: Session, user: User, topic: str):
     raw_text = ""
     try:
-        payload, raw_text = _generate_impact_payload(topic)
+        payload, raw_text = _generate_impact_payload(topic, user)
         parsed = _validate_ai_payload(payload)
     except HTTPException:
         raise
     except Exception as exc:
         try:
-            payload, raw_text = _generate_impact_payload(topic)
+            payload, raw_text = _generate_impact_payload(topic, user)
             parsed = _validate_ai_payload(payload)
         except Exception as retry_exc:
             preview = (raw_text or "").strip()
@@ -189,7 +199,7 @@ def create_impact_from_prompt(db: Session, user_id: str, topic: str):
     impact = Impact(
         title=parsed["title"],
         description=parsed["description"],
-        owner_id=user_id,
+        owner_id=user.id,
     )
     db.add(impact)
     db.flush()
@@ -203,7 +213,7 @@ def create_impact_from_prompt(db: Session, user_id: str, topic: str):
                 icon=step["icon"],
                 order=step["order"],
                 unlocked=step["order"] == 1,
-                owner_id=user_id,
+                owner_id=user.id,
                 impact_id=impact.id,
             )
         )

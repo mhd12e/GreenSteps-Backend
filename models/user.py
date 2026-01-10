@@ -16,6 +16,5 @@ class User(Base):
     password_hash = Column(String, nullable=False)
 
     interests = Column(JSON, nullable=False, default=list)
-    user_data = Column(JSON, nullable=True, default=list)
 
     created_at = Column(DateTime, server_default=func.now())

@@ -1,7 +1,10 @@
 import uuid
 import sys
 import time
+import asyncio
+from urllib.parse import urlparse
 import requests
+import websockets
 from testing.config import (
     BASE_URL,
     TIMEOUT_SECONDS,
@@ -16,6 +19,13 @@ VERBOSE = False
 
 def url(path: str) -> str:
     return f"{BASE_URL}{path}"
+
+def ws_url(path: str) -> str:
+    parsed = urlparse(BASE_URL)
+    scheme = "wss" if parsed.scheme == "https" else "ws"
+    base_path = parsed.path.rstrip("/")
+    base = f"{scheme}://{parsed.netloc}{base_path}"
+    return f"{base}{path}"
 
 
 def auth_headers(token: str | None) -> dict[str, str]:
@@ -58,6 +68,11 @@ def assert_error(payload: dict, code: str | None = None, status_code: int | None
     if status_code is not None:
         expect(status_code > 399, "Expected an error status code")
 
+def assert_error_code_in(payload: dict, codes: set[str]):
+    expect("error" in payload, "Missing error object")
+    expect("code" in payload["error"], "Missing error.code")
+    expect(payload["error"]["code"] in codes, f"Unexpected error code: {payload['error']['code']}")
+
 
 def test_health(state: dict):
     log_info("Testing health endpoint", VERBOSE)
@@ -67,6 +82,12 @@ def test_health(state: dict):
     assert_envelope(payload, expect_data=True)
     expect(payload["data"] is None, "Health data should be null")
     log_ok("Health endpoint OK", VERBOSE)
+
+    resp = request("GET", "/test", state)
+    expect(resp.status_code == 200, f"Test console status {resp.status_code}")
+    content_type = resp.headers.get("content-type", "")
+    expect("text/html" in content_type.lower(), "Test console content-type should be text/html")
+    log_ok("Test console OK", VERBOSE)
 
 
 def fetch_limits(state: dict):
@@ -94,6 +115,11 @@ def test_auth_flow(state: dict):
         "interests": ["solar", "recycling"],
     }
 
+    resp = request("POST", "/auth/register", state, json={"email": "bad", "password": "nope"})
+    payload = parse_json(resp)
+    expect(resp.status_code == 422, f"Register validation status {resp.status_code}")
+    assert_error(payload, code="validation_error")
+
     resp = request("POST", "/auth/register", state, json=register_payload)
     payload = parse_json(resp)
     expect(resp.status_code == 200, f"Register status {resp.status_code}")
@@ -114,6 +140,12 @@ def test_auth_flow(state: dict):
     payload = parse_json(resp)
     expect(resp.status_code == 401, f"Bad login status {resp.status_code}")
     assert_error(payload, code="invalid_credentials")
+
+    resp = request("POST", "/auth/login", state, json={"email": "not-an-email"})
+    state["login_calls"] += 1
+    payload = parse_json(resp)
+    expect(resp.status_code == 422, f"Login validation status {resp.status_code}")
+    assert_error(payload, code="validation_error")
 
     resp = request(
         "POST",
@@ -143,6 +175,22 @@ def test_auth_flow(state: dict):
     user_id = payload["data"]["user_id"]
     expect(user_id, "Missing user_id")
 
+    resp = request("GET", "/auth/protected", state)
+    payload = parse_json(resp)
+    expect(resp.status_code == 403, f"Protected missing auth status {resp.status_code}")
+    assert_error_code_in(payload, {"error", "not_authenticated"})
+
+    resp = request(
+        "GET",
+        "/auth/protected",
+        state,
+        headers=auth_headers("invalid-token"),
+    )
+    state["protected_calls"] += 1
+    payload = parse_json(resp)
+    expect(resp.status_code == 401, f"Protected invalid token status {resp.status_code}")
+    assert_error(payload, code="not_authenticated")
+
     resp = request(
         "POST",
         "/auth/refresh",
@@ -163,9 +211,25 @@ def test_auth_flow(state: dict):
     expect(resp.status_code == 200, f"Refresh status {resp.status_code}")
     assert_envelope(payload, expect_data=True)
     access_token = payload["data"]["access_token"]
+    previous_refresh_token = refresh_token
     refresh_token = payload["data"]["refresh_token"]
     expect(access_token, "Missing refreshed access token")
     expect(refresh_token, "Missing refreshed refresh token")
+
+    resp = request(
+        "POST",
+        "/auth/refresh",
+        state,
+        json={"refresh_token": previous_refresh_token},
+    )
+    payload = parse_json(resp)
+    expect(resp.status_code == 401, f"Refresh old token status {resp.status_code}")
+    assert_error(payload, code="invalid_refresh_token")
+
+    resp = request("POST", "/auth/refresh", state, json={})
+    payload = parse_json(resp)
+    expect(resp.status_code == 422, f"Refresh validation status {resp.status_code}")
+    assert_error(payload, code="validation_error")
 
     resp = request(
         "POST",
@@ -187,53 +251,28 @@ def test_auth_flow(state: dict):
     expect(resp.status_code == 401, f"Logout invalid status {resp.status_code}")
     assert_error(payload, code="invalid_refresh_token")
 
+    resp = request("POST", "/auth/logout", state, json={})
+    payload = parse_json(resp)
+    expect(resp.status_code == 422, f"Logout validation status {resp.status_code}")
+    assert_error(payload, code="validation_error")
+
     log_ok("Auth flow OK", VERBOSE)
     return email, password, access_token, refresh_token
 
 
-def test_user_data(access_token: str, state: dict):
-    log_info("Testing user data endpoints", VERBOSE)
-    item = {"key": "value", "nonce": str(uuid.uuid4())}
-    resp = request(
-        "POST",
-        "/users/me/user-data",
-        state,
-        json={"item": item},
-        headers=auth_headers(access_token),
-    )
-    payload = parse_json(resp)
-    expect(resp.status_code == 200, f"Append user_data status {resp.status_code}")
-    assert_envelope(payload, expect_data=True)
-    expect(item in payload["data"]["user_data"], "Appended item not in user_data")
-
-    resp = request(
-        "DELETE",
-        "/users/me/user-data",
-        state,
-        json={"item": item},
-        headers=auth_headers(access_token),
-    )
-    payload = parse_json(resp)
-    expect(resp.status_code == 200, f"Delete user_data status {resp.status_code}")
-    assert_envelope(payload, expect_data=True)
-    expect(item not in payload["data"]["user_data"], "Deleted item still in user_data")
-
-    resp = request(
-        "DELETE",
-        "/users/me/user-data",
-        state,
-        json={"item": item},
-        headers=auth_headers(access_token),
-    )
-    payload = parse_json(resp)
-    expect(resp.status_code == 404, f"Delete missing item status {resp.status_code}")
-    assert_error(payload, code="user_data_item_not_found")
-
-    log_ok("User data endpoints OK", VERBOSE)
-
-
-def test_impact_flow(access_token: str, state: dict):
+def test_impact_flow(access_token: str, state: dict, keep_for_voice: bool = False):
     log_info("Testing impact endpoints", VERBOSE)
+    resp = request(
+        "GET",
+        "/impact",
+        state,
+        headers=auth_headers(access_token),
+    )
+    payload = parse_json(resp)
+    expect(resp.status_code == 200, f"Impact list status {resp.status_code}")
+    assert_envelope(payload, expect_data=True)
+    expect(payload["data"]["impact_ids"] == [], "Impact list should start empty")
+
     short_resp = request(
         "POST",
         "/impact/generate",
@@ -245,6 +284,17 @@ def test_impact_flow(access_token: str, state: dict):
     expect(short_resp.status_code == 422, f"Missing topic status {short_resp.status_code}")
     assert_error(payload, code="validation_error")
 
+    short_resp = request(
+        "POST",
+        "/impact/generate",
+        state,
+        json={"topic": "ab"},
+        headers=auth_headers(access_token),
+    )
+    payload = parse_json(short_resp)
+    expect(short_resp.status_code == 422, f"Short topic status {short_resp.status_code}")
+    assert_error(payload, code="validation_error")
+
     resp = request(
         "POST",
         "/impact/generate",
@@ -253,6 +303,10 @@ def test_impact_flow(access_token: str, state: dict):
         headers=auth_headers(access_token),
     )
     payload = parse_json(resp)
+    if resp.status_code == 503:
+        assert_error(payload, code="ai_unavailable")
+        log_warn("Impact generation unavailable; skipping impact tests", VERBOSE)
+        return None
     expect(resp.status_code == 200, f"Generate impact status {resp.status_code}")
     assert_envelope(payload, expect_data=True)
     impact = payload["data"]
@@ -263,6 +317,7 @@ def test_impact_flow(access_token: str, state: dict):
         expect(step.get("id"), "Step id missing")
 
     impact_id = impact["id"]
+    step_id = impact["steps"][0]["id"]
     resp = request(
         "GET",
         f"/impact/{impact_id}",
@@ -278,6 +333,14 @@ def test_impact_flow(access_token: str, state: dict):
         expect(step["icon"], "Impact payload icon missing")
         expect(step.get("id"), "Impact payload id missing")
 
+    if not keep_for_voice:
+        delete_impact(access_token, impact_id, state)
+
+    log_ok("Impact endpoints OK", VERBOSE)
+    return impact_id, step_id
+
+
+def delete_impact(access_token: str, impact_id: str, state: dict):
     resp = request(
         "DELETE",
         f"/impact/{impact_id}",
@@ -298,7 +361,96 @@ def test_impact_flow(access_token: str, state: dict):
     expect(resp.status_code == 404, f"Deleted impact status {resp.status_code}")
     assert_error(payload, code="impact_not_found")
 
-    log_ok("Impact endpoints OK", VERBOSE)
+    resp = request(
+        "DELETE",
+        "/impact/not-a-real-id",
+        state,
+        headers=auth_headers(access_token),
+    )
+    payload = parse_json(resp)
+    expect(resp.status_code == 404, f"Delete missing impact status {resp.status_code}")
+    assert_error(payload, code="impact_not_found")
+
+    resp = request(
+        "GET",
+        "/impact",
+        state,
+        headers=auth_headers(access_token),
+    )
+    payload = parse_json(resp)
+    expect(resp.status_code == 200, f"Impact list after delete status {resp.status_code}")
+    assert_envelope(payload, expect_data=True)
+    expect(impact_id not in payload["data"]["impact_ids"], "Deleted impact still listed")
+
+
+async def _ws_expect_close(path: str, expect_code: int):
+    try:
+        async with websockets.connect(ws_url(path)) as ws:
+            await ws.recv()
+    except websockets.ConnectionClosed as exc:
+        expect(exc.code == expect_code, f"Expected WS close {expect_code}, got {exc.code}")
+        return
+    raise TestFailure(f"Expected WS close {expect_code} but connection stayed open")
+
+
+async def _ws_expect_close_headers(path: str, headers: dict, expect_code: int):
+    try:
+        async with websockets.connect(ws_url(path), additional_headers=headers) as ws:
+            await ws.recv()
+    except websockets.ConnectionClosed as exc:
+        expect(exc.code == expect_code, f"Expected WS close {expect_code}, got {exc.code}")
+        return
+    raise TestFailure(f"Expected WS close {expect_code} but connection stayed open")
+
+
+async def _ws_expect_audio(path: str, headers: dict):
+    try:
+        async with websockets.connect(ws_url(path), additional_headers=headers) as ws:
+            for _ in range(5):
+                await ws.send(b"\x00" * 3200)
+                await asyncio.sleep(0.05)
+            try:
+                message = await asyncio.wait_for(ws.recv(), timeout=8)
+            except asyncio.TimeoutError:
+                return "timeout"
+            if isinstance(message, (bytes, bytearray)) and len(message) > 0:
+                return "ok"
+            return "unexpected"
+    except websockets.ConnectionClosed as exc:
+        return f"closed:{exc.code}"
+
+
+def test_voice_stream(access_token: str, step_id: str, state: dict):
+    log_info("Testing voice stream", VERBOSE)
+    asyncio.run(_ws_expect_close(f"/voice/stream/{step_id}", 1008))
+    asyncio.run(
+        _ws_expect_close_headers(
+            f"/voice/stream/{step_id}",
+            {"Authorization": "Bearer invalid-token"},
+            1008,
+        )
+    )
+    asyncio.run(
+        _ws_expect_close_headers(
+            f"/voice/stream/{uuid.uuid4()}",
+            {"Authorization": f"Bearer {access_token}"},
+            1008,
+        )
+    )
+    result = asyncio.run(
+        _ws_expect_audio(
+            f"/voice/stream/{step_id}",
+            {"Authorization": f"Bearer {access_token}"},
+        )
+    )
+    if result == "ok":
+        log_ok("Voice stream OK", VERBOSE)
+    elif result == "timeout":
+        log_warn("Voice stream timed out waiting for audio", VERBOSE)
+    elif result.startswith("closed:1011"):
+        log_warn("Voice stream closed: AI client unavailable", VERBOSE)
+    else:
+        log_warn("Voice stream returned unexpected payload", VERBOSE)
 
 
 def test_account_deletion(email: str, password: str, access_token: str, refresh_token: str, state: dict):
@@ -333,6 +485,16 @@ def test_account_deletion(email: str, password: str, access_token: str, refresh_
     payload = parse_json(resp)
     expect(resp.status_code == 401, f"Refresh after delete status {resp.status_code}")
     assert_error(payload, code="invalid_refresh_token")
+
+    resp = request(
+        "GET",
+        "/users/me/user-data",
+        state,
+        headers=auth_headers(access_token),
+    )
+    payload = parse_json(resp)
+    expect(resp.status_code == 404, f"User data after delete status {resp.status_code}")
+    assert_error(payload, code="user_not_found")
 
     log_ok("Account deletion OK", VERBOSE)
 
@@ -392,10 +554,14 @@ def run():
         test_health(state)
         per_user_limit, per_ip_limit = fetch_limits(state)
         email, password, access_token, refresh_token = test_auth_flow(state)
-        test_user_data(access_token, state)
-        test_impact_flow(access_token, state)
+        impact_result = test_impact_flow(access_token, state, keep_for_voice=RUN_VOICE_TESTS)
         if RUN_VOICE_TESTS:
-            log_warn("Voice tests are enabled but not implemented in this script", VERBOSE)
+            if impact_result:
+                impact_id, step_id = impact_result
+                test_voice_stream(access_token, step_id, state)
+                delete_impact(access_token, impact_id, state)
+            else:
+                log_warn("Voice tests skipped because impact generation is unavailable", VERBOSE)
         test_user_rate_limit(access_token, state, per_user_limit)
         test_account_deletion(email, password, access_token, refresh_token, state)
         test_ip_rate_limit(state, per_ip_limit)

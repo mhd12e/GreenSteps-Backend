@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
-from utils.tokens import verify_token
+from utils.tokens import verify_access_token
 from core.database import get_db
 from models.user import User
 from core.config import settings
@@ -19,7 +19,7 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     try:
-        payload = verify_token(credentials.credentials)
+        payload = verify_access_token(credentials.credentials)
     except HTTPException:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

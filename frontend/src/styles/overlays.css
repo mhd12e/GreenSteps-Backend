@@ -1,0 +1,21 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.overlay-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 20px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  display: grid;
+  gap: 12px;
+}

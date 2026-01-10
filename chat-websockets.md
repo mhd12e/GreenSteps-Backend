@@ -34,7 +34,7 @@ If the AI client is not configured, the server closes the socket with:
 
 After validation, the server builds a structured context object with:
 
-- User profile (`full_name`, `user_data`)
+- User profile (`full_name`, `interests`)
 - Impact metadata (`title`, `description`)
 - Current step (`order`, `title`, `description`, `icon`)
 - Previous/next step (if they exist)

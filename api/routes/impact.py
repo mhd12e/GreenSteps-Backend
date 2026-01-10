@@ -47,7 +47,7 @@ def generate_impact(
     current_user=Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    impact, steps = impact_service.create_impact_from_prompt(db, current_user.id, data.topic)
+    impact, steps = impact_service.create_impact_from_prompt(db, current_user, data.topic)
     return Envelope(
         data=ImpactResponse(
             id=str(impact.id),
