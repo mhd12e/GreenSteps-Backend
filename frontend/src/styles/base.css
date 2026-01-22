@@ -15,6 +15,13 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
+}
+
 body {
   margin: 0;
   font-family: "Space Grotesk", sans-serif;

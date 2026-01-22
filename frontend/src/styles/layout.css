@@ -108,6 +108,10 @@
   flex: 1 1 160px;
 }
 
+.row > .btn {
+  justify-content: center;
+}
+
 .list {
   display: grid;
   gap: 10px;
