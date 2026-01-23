@@ -19,11 +19,15 @@ venv/
 db_data/
 npm/
 
-# Node junk (if any)
+# Node junk
 node_modules/
+**/node_modules/
+frontend/node_modules/
+frontend/dist/
 
 # Env files (never bake secrets)
 .env
+.env*
 
 # OS noise
 .DS_Store
