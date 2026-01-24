@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { useImpacts } from '@/hooks/use-impacts';
 import { ImpactCard } from '@/components/impacts/impact-card';
 import { EmptyImpactState } from '@/components/impacts/empty-state';
+import { useTitle } from '@/hooks/use-title';
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -34,7 +35,8 @@ const itemVariants = {
     show: { opacity: 1, y: 0 }
 };
 
-export default function Dashboard() {
+export default function ImpactsList() {
+  useTitle('My Impacts');
   const { impacts, loading, removeImpact } = useImpacts();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 

@@ -10,11 +10,14 @@ import { cn } from '@/lib/utils';
 import { FeatureBadge } from '@/components/ui/feature-badge';
 import { LoginForm } from '@/components/auth/login-form';
 import { RegisterForm } from '@/components/auth/register-form';
+import { useTitle } from '@/hooks/use-title';
 
 export default function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
+
+  useTitle(activeTab === 'login' ? 'Sign In' : 'Join');
 
   useAuthRedirect();
 

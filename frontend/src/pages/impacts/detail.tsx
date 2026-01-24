@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { StepItem } from '@/components/impacts/step-item';
+import { useTitle } from '@/hooks/use-title';
 
 // Helper to sort steps
 const getSortedSteps = (stepsDict: Record<string, ImpactStepPayloadResponse>) => {
@@ -35,6 +36,8 @@ export default function ImpactDetailPage() {
   const location = useLocation();
   const [impact, setImpact] = useState<ImpactPayloadResponse | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useTitle(impact?.title || 'Impact Details');
 
   // Confetti Effect
   useEffect(() => {

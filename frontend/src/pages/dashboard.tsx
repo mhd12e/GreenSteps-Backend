@@ -6,8 +6,10 @@ import { UserProfileResponse } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Leaf, Bot, ArrowRight, Sparkles, Zap, ShieldCheck } from 'lucide-react';
+import { useTitle } from '@/hooks/use-title';
 
 export default function Dashboard() {
+  useTitle('Welcome');
   const [user, setUser] = useState<UserProfileResponse | null>(null);
 
   useEffect(() => {

@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion';
 import { Bot, Sparkles, Construction } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { useTitle } from '@/hooks/use-title';
 
 export default function MaterialAI() {
+  useTitle('Material AI');
   return (
     <div className="flex items-center justify-center h-full min-h-[60vh] p-4">
       <motion.div
