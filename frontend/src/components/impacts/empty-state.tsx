@@ -17,7 +17,7 @@ export function EmptyImpactState() {
         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
             Ready to make a difference? Generate your first personalized impact plan and start your journey.
         </p>
-        <Button asChild size="lg" className="alive-button rounded-full font-bold w-full sm:w-auto px-12">
+        <Button asChild size="lg" className="alive-button rounded-full font-bold w-[90%] sm:w-auto px-12 mx-auto">
             <Link to="/impacts/generate">
                 <Sparkles className="mr-2 h-5 w-5" /> Generate Impact
             </Link>

@@ -57,7 +57,7 @@ export default function GenerateImpactPage() {
   return (
     <div className="max-w-2xl mx-auto py-10 px-4 space-y-4">
       <Button variant="ghost" asChild className="hover:bg-muted -ml-4 text-muted-foreground hover:text-foreground transition-colors">
-        <Link to="/"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Dashboard</Link>
+        <Link to="/impacts"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Impacts</Link>
       </Button>
 
       <Card className="clean-card bg-card p-2">

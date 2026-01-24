@@ -94,7 +94,7 @@ export default function ImpactDetailPage() {
     <div className="max-w-3xl mx-auto space-y-8 pb-32 pt-8">
       <div className="space-y-4">
         <Button variant="ghost" asChild className="hover:bg-muted -ml-4">
-            <Link to="/"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Dashboard</Link>
+            <Link to="/impacts"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Impacts</Link>
         </Button>
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-4xl font-extrabold text-foreground tracking-tight">

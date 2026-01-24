@@ -2,9 +2,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import AuthPage from '@/pages/auth/auth-page';
 import Dashboard from '@/pages/dashboard';
+import ImpactsList from '@/pages/impacts/list';
 import GenerateImpactPage from '@/pages/impacts/generate';
 import ImpactDetailPage from '@/pages/impacts/detail';
 import ProfilePage from '@/pages/profile';
+import MaterialAI from '@/pages/materials/coming-soon';
 import SessionPage from '@/pages/session';
 import { MainLayout } from '@/components/main-layout';
 import { ProtectedRoute } from '@/components/protected-route';
@@ -26,6 +28,8 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/impacts" element={<ImpactsList />} />
+              <Route path="/materials" element={<MaterialAI />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/impacts/generate" element={<GenerateImpactPage />} />
               <Route path="/impacts/:impactId" element={<ImpactDetailPage />} />

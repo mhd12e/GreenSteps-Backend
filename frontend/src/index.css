@@ -137,4 +137,6 @@
     border-color: hsl(var(--primary) / 0.2);
     transform: translateY(-0.25rem);
   }
+
+  /* Mobile Sidebar Animations - Sheet Specific - REMOVED */
 }
