@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import api from '@/lib/api';
 import { ImpactPayloadResponse, ImpactStepPayloadResponse } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, ArrowLeft, Play, Flag } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { StepItem } from '@/components/impacts/step-item';
 
 // Helper to sort steps
 const getSortedSteps = (stepsDict: Record<string, ImpactStepPayloadResponse>) => {
@@ -31,8 +32,34 @@ const itemVariants = {
 
 export default function ImpactDetailPage() {
   const { impactId } = useParams<{ impactId: string }>();
+  const location = useLocation();
   const [impact, setImpact] = useState<ImpactPayloadResponse | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Confetti Effect
+  useEffect(() => {
+    if (location.state?.newImpact) {
+      const duration = 3 * 1000;
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+      const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+      const interval: any = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+        confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+      }, 250);
+
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const fetchImpact = async () => {
@@ -90,32 +117,13 @@ export default function ImpactDetailPage() {
 
         <div className="space-y-12">
             {sortedSteps.map((step, index) => (
-                <motion.div key={step.id} variants={itemVariants} className="relative pl-24 group">
-                    {/* Interactive Step Circle */}
-                    <motion.div 
-                        whileHover={{ scale: 1.1 }}
-                        className="absolute left-0 top-0 w-16 h-16 rounded-full bg-background border-4 border-primary flex items-center justify-center z-10 shadow-sm transition-colors"
-                    >
-                         {index === sortedSteps.length - 1 ? (
-                             <Flag className="w-8 h-8 text-primary fill-current" />
-                         ) : (
-                            <span className="text-2xl font-bold text-primary">{step.order}</span>
-                         )}
-                    </motion.div>
-
-                    <Card className="clean-card overflow-hidden group-hover:-translate-y-1 transition-transform duration-300">
-                        <CardContent className="p-8">
-                             <h3 className="text-2xl font-bold mb-3 text-foreground">{step.title}</h3>
-                             <p className="text-muted-foreground mb-8 leading-relaxed text-lg">{step.descreption || step.description}</p>
-                             
-                             <Button asChild size="lg" className="alive-button rounded-full font-semibold px-8 text-white">
-                                 <Link to={`/impacts/${impactId}/${step.id}`}>
-                                    <Play className="w-5 h-5 mr-2 fill-current" /> Start Session
-                                 </Link>
-                             </Button>
-                        </CardContent>
-                    </Card>
-                </motion.div>
+                <StepItem 
+                    key={step.id}
+                    step={step}
+                    isLast={index === sortedSteps.length - 1}
+                    impactId={impactId!}
+                    variants={itemVariants}
+                />
             ))}
         </div>
       </motion.div>

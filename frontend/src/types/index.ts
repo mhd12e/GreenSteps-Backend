@@ -48,3 +48,18 @@ export interface UserProfileUpdateRequest {
     age?: number;
     interests?: string[];
 }
+
+export interface ImpactStepResponse {
+    id: string;
+    order: number;
+    title: string;
+    description: string;
+    icon: string;
+}
+
+export interface ImpactResponse {
+    id: string;
+    title: string;
+    description: string;
+    steps: ImpactStepResponse[];
+}

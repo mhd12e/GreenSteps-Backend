@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '@/lib/api';
+import { ImpactResponse } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -39,9 +40,10 @@ export default function GenerateImpactPage() {
   const onSubmit = async (data: GenerateFormValues) => {
     setLoading(true);
     try {
-      await api.post('/impact/generate', data);
+      const response = await api.post<unknown, ImpactResponse>('/impact/generate', data);
       toast.success('Impact plan generated successfully!');
-      navigate('/'); // Redirect to dashboard to see the new impact
+      // Redirect to the new impact detail page with a flag for confetti
+      navigate(`/impacts/${response.id}`, { state: { newImpact: true } });
     } catch (error) {
       console.error("Generation failed", error);
       toast.error('Failed to generate impact. Please try again.');
