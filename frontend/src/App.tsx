@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import LoginPage from '@/pages/auth/login';
-import RegisterPage from '@/pages/auth/register';
+import AuthPage from '@/pages/auth/auth-page';
 import Dashboard from '@/pages/dashboard';
 import GenerateImpactPage from '@/pages/impacts/generate';
 import ImpactDetailPage from '@/pages/impacts/detail';
@@ -22,8 +21,8 @@ function App() {
       <HealthGuard>
         <Routes>
           {/* Public Routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login" element={<AuthPage />} />
+          <Route path="/register" element={<AuthPage />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
