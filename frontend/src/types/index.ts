@@ -36,3 +36,15 @@ export interface VoiceTokenResponse {
     new_session_expire_time: string;
     model: string;
 }
+
+export interface UserProfileResponse {
+    full_name: string;
+    age: number | null;
+    interests: string[];
+}
+
+export interface UserProfileUpdateRequest {
+    full_name?: string;
+    age?: number;
+    interests?: string[];
+}

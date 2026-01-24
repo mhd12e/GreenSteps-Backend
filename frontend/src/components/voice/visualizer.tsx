@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Leaf } from 'lucide-react';
+import logo from '@/assets/logo.png';
 
 interface VisualizerProps {
   volume: number; // 0 to 1 normalized
@@ -8,7 +8,6 @@ interface VisualizerProps {
 
 export function Visualizer({ volume, isActive }: VisualizerProps) {
   // Map volume (0-1) to scale (1.0-2.5)
-  // Smoothing is important, done in parent or via transition
   const scale = 1 + volume * 1.5;
 
   return (
@@ -32,10 +31,12 @@ export function Visualizer({ volume, isActive }: VisualizerProps) {
       <motion.div
         animate={{ scale: isActive ? scale : 1 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        className="relative z-10"
       >
-        <Leaf 
-            className="w-32 h-32 fill-primary text-primary drop-shadow-2xl" 
-            strokeWidth={1.5}
+        <img 
+            src={logo} 
+            alt="Logo"
+            className="w-32 h-32 object-contain drop-shadow-2xl" 
         />
       </motion.div>
     </div>

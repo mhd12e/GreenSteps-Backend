@@ -53,6 +53,8 @@ export default function SessionPage() {
   const sessionRef = useRef<any>(null);
   const animationFrameRef = useRef<number | null>(null);
   const nextStartTimeRef = useRef<number>(0);
+  const aiSpeakingFirstRef = useRef<boolean>(true);
+  const micStreamRef = useRef<MediaStream | null>(null);
 
   // Initialize Session
   useEffect(() => {
@@ -91,6 +93,11 @@ export default function SessionPage() {
                     setStatus('connected');
                 },
                 onmessage: (message: any) => {
+                    // Check if AI turn is complete to unblock mic
+                    if (message.serverContent?.turnComplete) {
+                        aiSpeakingFirstRef.current = false;
+                    }
+
                     // Handle incoming audio
                     if (message.serverContent?.modelTurn?.parts) {
                         for (const part of message.serverContent.modelTurn.parts) {
@@ -128,6 +135,12 @@ export default function SessionPage() {
         });
         sessionRef.current = session;
 
+        // Ask AI to greet first (moved here to avoid TDZ in onopen)
+        (session as any).sendClientContent({
+            turns: [{ parts: [{ text: "Start the conversation: greet me briefly, then ask what I need." }] }],
+            turnComplete: true
+        });
+
         // 4. Setup Microphone Input
         const stream = await navigator.mediaDevices.getUserMedia({ 
             audio: {
@@ -136,6 +149,7 @@ export default function SessionPage() {
                 sampleRate: 16000 // Request 16k if possible
             } 
         });
+        micStreamRef.current = stream;
 
         const micSource = audioCtx.createMediaStreamSource(stream);
         // Connect mic to analyser for visualizer
@@ -145,6 +159,9 @@ export default function SessionPage() {
         // Buffer size 4096 gives ~0.08s latency at 48k
         const processor = audioCtx.createScriptProcessor(4096, 1, 1);
         processor.onaudioprocess = (e) => {
+            // Block mic if AI hasn't finished greeting
+            if (aiSpeakingFirstRef.current) return;
+
             const inputData = e.inputBuffer.getChannelData(0);
             
             // Downsample and convert
@@ -195,6 +212,10 @@ export default function SessionPage() {
              // Try close
              try { sessionRef.current.close(); } catch(e) {}
         }
+        if (micStreamRef.current) {
+            micStreamRef.current.getTracks().forEach(track => track.stop());
+            micStreamRef.current = null;
+        }
         if (scriptProcessorRef.current) {
             scriptProcessorRef.current.disconnect();
             scriptProcessorRef.current.onaudioprocess = null;
@@ -229,54 +250,151 @@ export default function SessionPage() {
     };
 
 
-  return (
-    <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
-        {/* Background blobs */}
-        <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl -z-10" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-secondary/30 rounded-full blur-3xl -z-10" />
+    return (
 
-      <header className="p-4 flex items-center justify-between z-10">
-        <Button variant="ghost" asChild className="text-muted-foreground">
-          <Link to={`/impacts/${impactId}`}><ArrowLeft className="mr-2 h-5 w-5"/> Back</Link>
-        </Button>
-      </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center p-8 gap-8">
-        <div className="text-center space-y-2">
-            <h2 className="text-3xl font-extrabold text-foreground">Voice Coach</h2>
-            <p className="text-muted-foreground font-medium">
-                {status === 'initializing' ? 'Connecting...' : status === 'connected' ? 'Listening...' : 'Disconnected'}
-            </p>
-        </div>
+      <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
 
-        {/* Visualizer */}
-        <div className="py-10">
-            <Visualizer volume={volume} isActive={status === 'connected'} />
-        </div>
 
-        {/* Status / Controls */}
-        <div className="flex flex-col items-center gap-6">
-            {status === 'error' && (
-                <div className="flex items-center text-destructive gap-2 bg-destructive/10 px-4 py-2 rounded-lg border border-destructive/20">
-                    <AlertCircle className="w-5 h-5" />
-                    <span>{errorMsg || "Connection failed"}</span>
-                </div>
-            )}
-            
-            <div className="flex flex-col items-center gap-4">
-                <Button 
-                    variant="destructive"
-                    size="lg" 
-                    className="rounded-full px-8 py-6 text-lg font-bold shadow-xl shadow-destructive/20 transition-all hover:scale-105 active:scale-95 gap-2"
-                    asChild
-                >
-                    <Link to={`/impacts/${impactId}`}>
-                        <XCircle className="w-6 h-6" /> Close Session
-                    </Link>
-                </Button>
-            </div>
-        </div>
-      </main>
-    </div>
-  );
-}
+        <header className="p-4 flex items-center justify-between z-10">
+
+
+          <Button variant="ghost" asChild className="text-muted-foreground hover:text-foreground transition-colors">
+
+
+            <Link to={`/impacts/${impactId}`}><ArrowLeft className="mr-2 h-5 w-5"/> Back</Link>
+
+
+          </Button>
+
+
+        </header>
+
+
+  
+
+
+        <main className="flex-1 flex flex-col items-center justify-center p-8 gap-12">
+
+
+          <div className="text-center space-y-2">
+
+
+              <h2 className="text-4xl font-bold text-foreground tracking-tight">Voice Coach</h2>
+
+
+              <p className="text-lg text-muted-foreground font-medium">
+
+
+                  {status === 'initializing' ? 'Connecting to AI...' : status === 'connected' ? 'Listening...' : 'Disconnected'}
+
+
+              </p>
+
+
+          </div>
+
+
+  
+
+
+          {/* Visualizer */}
+
+
+          <div className="relative">
+
+
+              <div className="relative z-10">
+
+
+                  <Visualizer volume={volume} isActive={status === 'connected'} />
+
+
+              </div>
+
+
+          </div>
+
+
+  
+
+
+          {/* Status / Controls */}
+
+
+          <div className="flex flex-col items-center gap-6 w-full max-w-sm">
+
+
+              {status === 'error' && (
+
+
+                  <div className="flex items-center text-destructive gap-3 bg-destructive/10 px-6 py-3 rounded-xl border border-destructive/20 shadow-sm w-full justify-center">
+
+
+                      <AlertCircle className="w-5 h-5 flex-shrink-0" />
+
+
+                      <span className="font-medium">{errorMsg || "Connection failed"}</span>
+
+
+                  </div>
+
+
+              )}
+
+
+              
+
+
+              <div className="flex flex-col items-center gap-4 w-full">
+
+
+                  <Button 
+
+
+                      variant="destructive"
+
+
+                      size="lg" 
+
+
+                      className="w-full rounded-full px-8 py-8 text-xl font-bold shadow-md hover:shadow-lg transition-all hover:scale-105 active:scale-95 gap-3"
+
+
+                      asChild
+
+
+                  >
+
+
+                      <Link to={`/impacts/${impactId}`}>
+
+
+                          <XCircle className="w-6 h-6" /> End Session
+
+
+                      </Link>
+
+
+                  </Button>
+
+
+              </div>
+
+
+          </div>
+
+
+        </main>
+
+
+      </div>
+
+
+    );
+
+
+  }
+
+
+  

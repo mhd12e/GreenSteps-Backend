@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 const generateSchema = z.object({
@@ -52,11 +52,15 @@ export default function GenerateImpactPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-10">
-      <Card>
+    <div className="max-w-2xl mx-auto py-10 px-4 space-y-4">
+      <Button variant="ghost" asChild className="hover:bg-muted -ml-4 text-muted-foreground hover:text-foreground transition-colors">
+        <Link to="/"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Dashboard</Link>
+      </Button>
+
+      <Card className="clean-card bg-card p-2">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl text-primary">
-            <Sparkles className="h-6 w-6" />
+          <CardTitle className="flex items-center gap-2 text-2xl text-foreground font-bold">
+            <Sparkles className="h-6 w-6 text-primary" />
             Generate New Impact Plan
           </CardTitle>
         </CardHeader>
@@ -68,9 +72,13 @@ export default function GenerateImpactPage() {
                 name="topic"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>What do you want to achieve?</FormLabel>
+                    <FormLabel className="text-foreground font-medium text-lg">What do you want to achieve?</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Reduce plastic usage, Start a community garden..." {...field} />
+                      <Input 
+                        placeholder="e.g., Reduce plastic usage, Start a community garden..." 
+                        {...field} 
+                        className="bg-transparent border-input focus:ring-2 focus:ring-primary/20 transition-all text-base"
+                      />
                     </FormControl>
                     <FormDescription>
                         Enter a topic or goal, and we'll generate a step-by-step plan for you.
@@ -79,13 +87,15 @@ export default function GenerateImpactPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" size="lg" className="w-full" disabled={loading}>
+              <Button type="submit" size="lg" className="alive-button w-full rounded-full py-6 text-lg font-bold" disabled={loading}>
                 {loading ? (
                     <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating Plan...
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating Plan...
                     </>
                 ) : (
-                    'Generate Plan'
+                    <>
+                        <Sparkles className="mr-2 h-5 w-5" /> Generate Plan
+                    </>
                 )}
               </Button>
             </form>

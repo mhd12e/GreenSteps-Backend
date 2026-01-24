@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
+import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { WifiOff, RefreshCw } from 'lucide-react';
@@ -8,22 +9,38 @@ export function HealthGuard({ children }: { children: React.ReactNode }) {
   const [isBackendDown, setIsBackendDown] = useState(false);
   const [countdown, setCountdown] = useState(10);
   const [isChecking, setIsChecking] = useState(false);
+  const { isAuthenticated, clearTokens } = useAuthStore();
 
   const checkHealth = useCallback(async () => {
     setIsChecking(true);
     try {
-      // Direct axios call might be better to avoid interceptor noise, but api instance is fine for public route
-      // We expect 200 OK.
+      // 1. Check System Health
       await api.get('/system/health');
       setIsBackendDown(false);
-      setCountdown(10); // Reset countdown for next time
+      setCountdown(10); 
+
+      // 2. Check Auth Status (if logged in)
+      if (isAuthenticated) {
+          try {
+              // This triggers the interceptor retry logic automatically on 401
+              await api.get('/auth/protected');
+          } catch (authError: any) {
+              // If we get here with a 401, it means refresh failed (interceptor gave up)
+              if (authError.response?.status === 401) {
+                  console.warn("Session expired, logging out.");
+                  clearTokens();
+                  // Router will handle redirect based on isAuthenticated state
+              }
+          }
+      }
+
     } catch (error) {
       console.error("Health check failed", error);
       setIsBackendDown(true);
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }, [isAuthenticated, clearTokens]);
 
   // Initial check on mount
   useEffect(() => {

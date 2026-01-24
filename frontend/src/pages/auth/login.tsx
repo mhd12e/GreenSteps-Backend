@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { TokenResponse } from '@/types';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
+import { Leaf } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -66,55 +68,85 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-muted/50">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center text-primary">GreenSteps Login</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="email@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="********" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Logging in...' : 'Login'}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-        <CardFooter className="justify-center">
-          <p className="text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-primary hover:underline">
-              Register
-            </Link>
-          </p>
-        </CardFooter>
-      </Card>
+    <div className="relative flex items-center justify-center min-h-screen bg-background p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-md"
+      >
+        <Card className="clean-card bg-card p-2">
+          <CardHeader className="space-y-2 text-center pb-8 pt-6">
+            <div className="flex justify-center mb-2">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary">
+                    <Leaf className="w-8 h-8 fill-current" />
+                </div>
+            </div>
+            <CardTitle className="text-3xl font-bold text-foreground">
+              Welcome Back
+            </CardTitle>
+            <p className="text-muted-foreground">
+                Enter your credentials to access your account
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground font-medium">Email</FormLabel>
+                      <FormControl>
+                        <Input 
+                            placeholder="hello@example.com" 
+                            {...field} 
+                            className="bg-transparent border-input focus:ring-2 focus:ring-primary/20 transition-all"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground font-medium">Password</FormLabel>
+                      <FormControl>
+                        <Input 
+                            type="password" 
+                            placeholder="••••••••" 
+                            {...field} 
+                            className="bg-transparent border-input focus:ring-2 focus:ring-primary/20 transition-all"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button 
+                    type="submit" 
+                    className="alive-button w-full font-semibold py-6 text-lg mt-2" 
+                    disabled={form.formState.isSubmitting}
+                >
+                  {form.formState.isSubmitting ? 'Logging in...' : 'Login'}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+          <CardFooter className="justify-center pb-6">
+            <p className="text-sm text-muted-foreground">
+              Don't have an account?{' '}
+              <Link to="/register" className="text-primary font-semibold hover:underline">
+                Sign up
+              </Link>
+            </p>
+          </CardFooter>
+        </Card>
+      </motion.div>
     </div>
   );
 }

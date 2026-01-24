@@ -1,65 +1,65 @@
 @import "tailwindcss";
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  /* Living Sustainability Theme - Light Mode */
+  --background: 80 30% 96%; /* Very light greenish-beige (Paige) */
+  --foreground: 160 50% 10%; /* Deep green-black */
 
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
+  --card: 80 20% 98%;
+  --card-foreground: 160 50% 10%;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
+  --popover: 80 20% 98%;
+  --popover-foreground: 160 50% 10%;
 
-  --primary: 173 80% 40%;
-  --primary-foreground: 210 40% 98%;
+  /* Vivid Green-Teal Primary */
+  --primary: 160 80% 25%; 
+  --primary-foreground: 80 10% 98%;
 
-  --secondary: 173 30% 96%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 160 30% 90%; 
+  --secondary-foreground: 160 80% 20%;
 
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
+  --muted: 80 10% 90%;
+  --muted-foreground: 160 20% 40%; 
 
-  --accent: 173 30% 96%;
-  --accent-foreground: 222.2 47.4% 11.2%;
+  --accent: 160 60% 90%; 
+  --accent-foreground: 160 80% 25%;
 
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 173 80% 40%;
+  --border: 80 20% 90%; 
+  --input: 80 20% 90%;
+  --ring: 160 80% 25%;
 
   --radius: 0.75rem;
 }
 
 .dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
+  /* Deep Forest Theme - Dark Mode */
+  --background: 160 50% 4%;
+  --foreground: 80 20% 96%;
 
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
+  --card: 160 50% 6%;
+  --card-foreground: 80 20% 96%;
 
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
+  --popover: 160 50% 6%;
+  --popover-foreground: 80 20% 96%;
 
-  --primary: 173 80% 50%;
-  --primary-foreground: 222.2 47.4% 11.2%;
+  --primary: 160 70% 45%; 
+  --primary-foreground: 160 50% 5%;
 
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 160 30% 12%;
+  --secondary-foreground: 80 20% 96%;
 
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
+  --muted: 160 30% 12%;
+  --muted-foreground: 160 20% 60%;
 
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
+  --accent: 160 40% 15%;
+  --accent-foreground: 80 20% 96%;
 
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 173 80% 50%;
+  --border: 160 30% 12%;
+  --input: 160 30% 12%;
+  --ring: 160 70% 45%;
 }
 
 @layer base {
@@ -69,6 +69,72 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* Global smooth shadow for all buttons */
+  button {
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
+/* Polished Interactive Classes */
+@layer components {
+  /* Clean, animated button without aggressive gradients */
+  .alive-button {
+    @apply relative overflow-hidden transform active:scale-95;
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    /* Soft multi-layered shadow */
+    box-shadow: 0 4px 6px -1px hsl(var(--primary) / 0.1), 0 2px 4px -1px hsl(var(--primary) / 0.06);
+  }
+  
+  .alive-button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(
+      120deg, 
+      transparent, 
+      rgba(255, 255, 255, 0.3), 
+      transparent
+    );
+    transform: skewX(-20deg);
+    animation: swipe 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  
+  @keyframes swipe {
+    0% { left: -100%; opacity: 0; }
+    10% { opacity: 1; }
+    50% { opacity: 0; left: 200%; }
+    100% { opacity: 0; left: 200%; }
+  }
+  
+  .alive-button:hover {
+    @apply -translate-y-0.5;
+    /* Richer glowing shadow on hover */
+    box-shadow: 0 10px 20px -5px hsl(var(--primary) / 0.3), 0 8px 8px -5px hsl(var(--primary) / 0.2);
+  }
+
+  /* Clean card with subtle interaction */
+  .clean-card {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .clean-card:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border-color: hsl(var(--primary) / 0.2);
+    transform: translateY(-0.25rem);
+  }
+}

@@ -5,15 +5,20 @@ import RegisterPage from '@/pages/auth/register';
 import Dashboard from '@/pages/dashboard';
 import GenerateImpactPage from '@/pages/impacts/generate';
 import ImpactDetailPage from '@/pages/impacts/detail';
+import ProfilePage from '@/pages/profile';
 import SessionPage from '@/pages/session';
 import { MainLayout } from '@/components/main-layout';
 import { ProtectedRoute } from '@/components/protected-route';
 import { HealthGuard } from '@/components/health-guard';
+import { LivingBackground } from '@/components/layout/living-background';
+import { MouseSpotlight } from '@/components/ui/mouse-spotlight';
 
 function App() {
   return (
     <BrowserRouter>
       <Toaster position="top-center" richColors />
+      <LivingBackground />
+      <MouseSpotlight />
       <HealthGuard>
         <Routes>
           {/* Public Routes */}
@@ -24,6 +29,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/impacts/generate" element={<GenerateImpactPage />} />
               <Route path="/impacts/:impactId" element={<ImpactDetailPage />} />
             </Route>

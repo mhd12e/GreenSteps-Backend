@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Outlet, useNavigate, Link } from 'react-router-dom';
-import { Leaf, LogOut } from 'lucide-react';
+import { Leaf, LogOut, User } from 'lucide-react';
 import api from '@/lib/api';
 
 export function MainLayout() {
@@ -30,7 +30,11 @@ export function MainLayout() {
             <span>GreenSteps</span>
           </Link>
           <div className="flex items-center gap-4">
-             {/* User profile could go here */}
+            <Button variant="ghost" size="icon" asChild title="Profile">
+              <Link to="/profile">
+                <User className="w-5 h-5" />
+              </Link>
+            </Button>
             <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
               <LogOut className="w-5 h-5" />
             </Button>
