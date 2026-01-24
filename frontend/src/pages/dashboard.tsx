@@ -43,9 +43,10 @@ export default function Dashboard() {
       await api.delete(`/impact/${id}`);
       removeImpact(id);
       toast.success("Impact plan deleted successfully");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to delete impact", error);
-      toast.error("Failed to delete impact plan");
+      const msg = error.response?.data?.error?.message || "Failed to delete impact plan";
+      toast.error(msg);
     } finally {
       setDeleteId(null);
     }

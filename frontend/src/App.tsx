@@ -10,14 +10,12 @@ import { MainLayout } from '@/components/main-layout';
 import { ProtectedRoute } from '@/components/protected-route';
 import { HealthGuard } from '@/components/health-guard';
 import { LivingBackground } from '@/components/layout/living-background';
-import { MouseSpotlight } from '@/components/ui/mouse-spotlight';
 
 function App() {
   return (
     <BrowserRouter>
       <Toaster position="top-center" richColors />
       <LivingBackground />
-      <MouseSpotlight />
       <HealthGuard>
         <Routes>
           {/* Public Routes */}

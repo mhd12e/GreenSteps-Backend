@@ -21,7 +21,11 @@ interface ImpactCardProps {
 
 export function ImpactCard({ impact, onDeleteRequest, variants }: ImpactCardProps) {
   return (
-    <motion.div variants={variants}>
+    <motion.div 
+        variants={variants}
+        whileHover={{ scale: 1.02 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+    >
         <Card className="clean-card h-full flex flex-col overflow-hidden group relative">
           <CardHeader>
             <div className="flex justify-between items-start mb-2">

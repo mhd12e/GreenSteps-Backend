@@ -29,7 +29,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema) as any,
-    defaultValues: { email: '', password: '', full_name: '', age: 18, interests: [] },
+    defaultValues: { email: '', password: '', full_name: '', age: undefined, interests: [] },
   });
 
   const onRegisterSubmit = async (data: RegisterFormValues) => {
@@ -39,7 +39,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       toast.success('Registration successful! Please login.');
       onSuccess(data.email);
     } catch (err: any) {
-        const msg = err.response?.data?.message || err.response?.data?.detail?.message || 'Registration failed';
+        const msg = err.response?.data?.error?.message || 'Registration failed';
         toast.error(msg);
     }
   };

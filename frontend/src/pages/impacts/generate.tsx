@@ -44,10 +44,11 @@ export default function GenerateImpactPage() {
       toast.success('Impact plan generated successfully!');
       // Redirect to the new impact detail page with a flag for confetti
       navigate(`/impacts/${response.id}`, { state: { newImpact: true } });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Generation failed", error);
-      toast.error('Failed to generate impact. Please try again.');
-      form.setError('topic', { message: 'Failed to generate impact. Please try again.' });
+      const msg = error.response?.data?.error?.message || 'Failed to generate impact. Please try again.';
+      toast.error(msg);
+      form.setError('topic', { message: msg });
     } finally {
       setLoading(false);
     }

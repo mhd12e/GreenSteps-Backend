@@ -36,7 +36,7 @@ export function LoginForm() {
       toast.success('Welcome back!');
       navigate('/', { replace: true });
     } catch (err: any) {
-        const msg = err.response?.data?.message || err.response?.data?.detail?.message || 'Invalid credentials';
+        const msg = err.response?.data?.error?.message || 'Invalid credentials';
         toast.error(msg);
     }
   };

@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { memo } from 'react';
+import { motion } from 'framer-motion';
 import { Leaf, Sprout, Recycle, Flower, Wind, TreeDeciduous } from 'lucide-react';
 
 const BACKGROUND_ICONS = [
@@ -13,71 +13,54 @@ const BACKGROUND_ICONS = [
   { Icon: Sprout, size: 24, top: '90%', left: '30%', delay: 7 },
 ];
 
-export function LivingBackground() {
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  // Smooth out mouse movements
-  const springConfig = { damping: 50, stiffness: 100 }; 
-  const smoothX = useSpring(mouseX, springConfig);
-  const smoothY = useSpring(mouseY, springConfig);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const { clientX, clientY } = e;
-      const { innerWidth, innerHeight } = window;
-      const x = (clientX / innerWidth) * 2 - 1;
-      const y = (clientY / innerHeight) * 2 - 1;
-      mouseX.set(x);
-      mouseY.set(y);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [mouseX, mouseY]);
-
-  // Parallax for icons
-  const iconX = useTransform(smoothX, (x) => x * 15);
-  const iconY = useTransform(smoothY, (y) => y * 15);
-
-  // Parallax for blobs
-  const blob1X = useTransform(smoothX, (x) => x * -20);
-  const blob1Y = useTransform(smoothY, (y) => y * -20);
-
+export const LivingBackground = memo(function LivingBackground() {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none -z-50 bg-background transition-colors duration-1000">
-      {/* Background Blobs */}
+      {/* Background Blobs - Self Animating */}
       <motion.div
-        style={{ x: blob1X, y: blob1Y }}
         animate={{
+          x: [0, 30, -20, 0],
+          y: [0, -40, 20, 0],
           scale: [1, 1.05, 0.95, 1],
           opacity: [0.08, 0.12, 0.08],
         }}
-        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+        transition={{ 
+          duration: 25, 
+          repeat: Infinity, 
+          ease: "easeInOut" 
+        }}
         className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-primary rounded-full blur-[120px]"
       />
 
       <motion.div
         animate={{
+          x: [0, -40, 30, 0],
+          y: [0, 20, -30, 0],
           scale: [1, 1.1, 0.9, 1],
           opacity: [0.06, 0.1, 0.06],
         }}
-        transition={{ duration: 25, repeat: Infinity, ease: "easeInOut", delay: 5 }}
+        transition={{ 
+          duration: 30, 
+          repeat: Infinity, 
+          ease: "easeInOut", 
+          delay: 5 
+        }}
         className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-teal-600 rounded-full blur-[150px]"
       />
 
-      {/* Floating Icons */}
+      {/* Floating Icons - Self Animating */}
       {BACKGROUND_ICONS.map(({ Icon, size, top, left, delay }, i) => (
         <motion.div
           key={i}
-          style={{ x: iconX, y: iconY, top, left }}
+          initial={{ top, left }}
           animate={{
-            y: [0, -15, 0],
-            rotate: [0, 10, -10, 0],
+            x: [0, 10, -10, 0],
+            y: [0, -20, 10, 0],
+            rotate: [0, 15, -15, 0],
             opacity: [0.1, 0.2, 0.1],
           }}
           transition={{
-            duration: 8 + Math.random() * 4,
+            duration: 10 + Math.random() * 5,
             repeat: Infinity,
             ease: "easeInOut",
             delay: delay,
@@ -94,6 +77,4 @@ export function LivingBackground() {
       />
     </div>
   );
-}
-
-
+});

@@ -72,13 +72,8 @@ export default function ProfilePage() {
       toast.success('Profile updated successfully!');
     } catch (err: any) {
       console.error(err);
-       if (err.response?.data?.message) {
-         toast.error(err.response.data.message);
-      } else if (err.response?.data?.detail?.message) {
-          toast.error(err.response.data.detail.message);
-      } else {
-        toast.error('Failed to update profile.');
-      }
+      const msg = err.response?.data?.error?.message || 'Failed to update profile.';
+      toast.error(msg);
     }
   };
 
