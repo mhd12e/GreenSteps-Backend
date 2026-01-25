@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Map } from 'lucide-react'; // Added Map icon
 import { motion } from 'framer-motion';
 import {
   AlertDialog,
@@ -33,7 +33,7 @@ const containerVariants = {
 const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 }
-};
+  };
 
 export default function ImpactsList() {
   useTitle('My Impacts');
@@ -54,31 +54,30 @@ export default function ImpactsList() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8 pb-20 pt-8">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="text-center md:text-left">
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+                <Map className="w-8 h-8 text-primary" />
                 My Impacts
             </h1>
             <p className="text-muted-foreground mt-1">Track your journey to a greener future.</p>
         </div>
-        <Button asChild className="alive-button rounded-full px-6 w-full md:w-auto">
+        <Button asChild size="lg" className="alive-button rounded-full px-6 font-bold shadow-lg shadow-primary/20">
           <Link to="/impacts/generate">
             <Plus className="mr-2 h-5 w-5" /> Generate New Impact
           </Link>
         </Button>
       </div>
 
-      {impacts.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+                <div key={i} className="h-64 bg-muted/20 animate-pulse rounded-2xl border border-border/50" />
+            ))}
+        </div>
+      ) : impacts.length === 0 ? (
         <EmptyImpactState />
       ) : (
         <motion.div 
@@ -121,4 +120,3 @@ export default function ImpactsList() {
     </div>
   );
 }
-

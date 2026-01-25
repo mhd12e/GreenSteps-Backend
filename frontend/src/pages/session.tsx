@@ -64,7 +64,7 @@ export default function SessionPage() {
       setStatus('initializing');
       try {
         // 1. Get Token
-        const tokenData = await api.post<unknown, VoiceTokenResponse>('/voice/token', { step_id: stepId });
+        const tokenData = await api.post<unknown, VoiceTokenResponse>('/impact/voice/token', { step_id: stepId });
         
         if (cleanup) return;
 

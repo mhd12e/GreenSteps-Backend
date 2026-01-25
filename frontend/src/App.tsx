@@ -6,7 +6,10 @@ import ImpactsList from '@/pages/impacts/list';
 import GenerateImpactPage from '@/pages/impacts/generate';
 import ImpactDetailPage from '@/pages/impacts/detail';
 import ProfilePage from '@/pages/profile';
-import MaterialAI from '@/pages/materials/coming-soon';
+import MaterialsListPage from '@/pages/materials/list';
+import CreateMaterialPage from '@/pages/materials/create';
+import MaterialDetailPage from '@/pages/materials/detail';
+import WayDetailPage from '@/pages/materials/way-detail';
 import SessionPage from '@/pages/session';
 import TermsOfService from '@/pages/legal/terms-of-service';
 import PrivacyPolicy from '@/pages/legal/privacy-policy';
@@ -34,7 +37,13 @@ function App() {
             <Route element={<MainLayout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/impacts" element={<ImpactsList />} />
-              <Route path="/materials" element={<MaterialAI />} />
+              
+              {/* Materials */}
+              <Route path="/materials" element={<MaterialsListPage />} />
+              <Route path="/materials/new" element={<CreateMaterialPage />} />
+              <Route path="/materials/:id" element={<MaterialDetailPage />} />
+              <Route path="/materials/:id/ways/:wayId" element={<WayDetailPage />} />
+
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/impacts/generate" element={<GenerateImpactPage />} />
               <Route path="/impacts/:impactId" element={<ImpactDetailPage />} />

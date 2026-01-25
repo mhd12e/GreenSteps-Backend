@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { ArrowRight, Map, MoreVertical, Trash2 } from 'lucide-react';
+import { Map, MoreVertical, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
   DropdownMenu,
@@ -23,7 +23,7 @@ export function ImpactCard({ impact, onDeleteRequest, variants }: ImpactCardProp
   return (
     <motion.div 
         variants={variants}
-        whileHover={{ scale: 1.02 }}
+        whileHover={{ scale: 1.02, y: -4 }}
         transition={{ type: "spring", stiffness: 400, damping: 17 }}
     >
         <Card className="clean-card h-full flex flex-col overflow-hidden group relative">
@@ -47,27 +47,28 @@ export function ImpactCard({ impact, onDeleteRequest, variants }: ImpactCardProp
                 </span>
              </div>
           </CardContent>
-          <CardFooter className="gap-2">
-            <Button asChild variant="outline" className="flex-1 rounded-xl border-border bg-card hover:bg-secondary/50 hover:text-foreground transition-all">
-              <Link to={`/impacts/${impact.id}`}>
-                View Details <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
+          <CardFooter className="p-5 pt-0 flex justify-between items-center gap-2">
+            <Button asChild className="alive-button flex-1 font-semibold">
+                <Link to={`/impacts/${impact.id}`}>
+                    View Details
+                </Link>
             </Button>
+            
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="rounded-xl border-border bg-card hover:bg-secondary/50 transition-all">
-                  <MoreVertical className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 bg-white border border-border shadow-xl p-1">
-                <DropdownMenuItem 
-                  className="flex items-center gap-2 px-3 py-2.5 cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive rounded-md transition-colors"
-                  onClick={() => onDeleteRequest(impact.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span className="font-semibold">Delete Impact</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-10 w-10 bg-white border-border hover:bg-muted transition-colors">
+                        <MoreVertical className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-white">
+                    <DropdownMenuItem 
+                        className="text-destructive focus:text-destructive cursor-pointer"
+                        onClick={() => onDeleteRequest(impact.id)}
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
             </DropdownMenu>
           </CardFooter>
         </Card>

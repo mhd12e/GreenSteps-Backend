@@ -63,3 +63,24 @@ export interface ImpactResponse {
     description: string;
     steps: ImpactStepResponse[];
 }
+
+export interface MaterialWay {
+    id: string;
+    title: string;
+    description: string;
+    image_uri?: string;
+    md: string;
+    created_at: string;
+}
+
+export interface Material {
+    id: string;
+    title: string;
+    description?: string;
+    status: 'queued' | 'processing' | 'ready' | 'failed';
+    error_message?: string;
+    image_uri?: string;
+    original_image_uri?: string;
+    created_at: string;
+    ways: MaterialWay[];
+}
