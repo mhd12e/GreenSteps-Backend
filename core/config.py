@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     MATERIAL_TEXT_GENERATION_MODEL: str = "gemini-2.5-flash"
     MATERIAL_IMG_GENERATION_MODEL: str = "gemini-2.5-flash-image"
 
+    GOOGLE_API_KEY: str
+
     # Cloudflare R2 Configuration
     R2_ENDPOINT_URL: str
     R2_ACCESS_KEY_ID: str
