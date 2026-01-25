@@ -11,5 +11,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     MAX_REFRESH_TOKENS_PER_USER: int = 5
     IMPACT_GENERATION_MODEL: str = "gemini-2.5-flash"
+    MATERIAL_TEXT_GENERATION_MODEL: str = "gemini-2.5-flash"
+    MATERIAL_IMG_GENERATION_MODEL: str = "gemini-2.5-flash-image"
 
 settings = Settings()
