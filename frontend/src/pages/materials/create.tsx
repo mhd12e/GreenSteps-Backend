@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { UploadCloud, Loader2, Image as ImageIcon } from 'lucide-react';
+import { UploadCloud, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTitle } from '@/hooks/use-title';
 
@@ -72,6 +72,13 @@ export default function CreateMaterialPage() {
       }
   };
 
+  const handleRemoveImage = (e: React.MouseEvent, onChange: (files: FileList | null) => void) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setPreview(null);
+      onChange(null);
+  };
+
   return (
     <div className="container mx-auto px-4 py-12 max-w-xl">
       <Card className="clean-card bg-card">
@@ -115,13 +122,24 @@ export default function CreateMaterialPage() {
                                             onDragLeave={handleDragLeave}
                                             onDrop={(e) => handleDrop(e, onChange)}
                                             className={`
-                                                flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300
+                                                flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer transition-all duration-300 relative
                                                 ${isDragging ? 'border-primary bg-primary/10 scale-102 shadow-lg' : 'border-input hover:bg-muted/50'}
                                                 ${preview ? 'border-primary/50 bg-primary/5' : ''}
                                             `}
                                         >
                                             {preview ? (
-                                                <img src={preview} className="h-full w-full object-contain p-2" />
+                                                <>
+                                                    <img src={preview} className="h-full w-full object-contain p-2" />
+                                                    <Button
+                                                        type="button"
+                                                        variant="destructive"
+                                                        size="icon"
+                                                        className="absolute top-2 right-2 rounded-full h-8 w-8 shadow-md hover:scale-110 transition-transform"
+                                                        onClick={(e) => handleRemoveImage(e, onChange)}
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </>
                                             ) : (
                                                 <div className="flex flex-col items-center justify-center pt-5 pb-6 text-muted-foreground">
                                                     <ImageIcon className={`w-8 h-8 mb-2 ${isDragging ? 'text-primary scale-110' : 'opacity-50'} transition-all`} />

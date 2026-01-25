@@ -1,18 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Trash2, Loader2, CheckCircle2, AlertCircle, MoreVertical, Edit2 } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Edit2 } from 'lucide-react';
 import { Material } from '@/types';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { EntityActions } from '@/components/ui/action-dropdown';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +17,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 interface MaterialCardProps {
@@ -46,6 +40,17 @@ export function MaterialCard({ material, onDelete, onUpdateTitle, variants }: Ma
     setIsEditDialogOpen(false);
   };
 
+  const extraActions = [
+    {
+      label: 'Edit Title',
+      icon: Edit2,
+      onClick: () => {
+        setNewTitle(material.title);
+        setIsEditDialogOpen(true);
+      },
+    }
+  ];
+
   return (
     <motion.div
       variants={variants}
@@ -53,7 +58,6 @@ export function MaterialCard({ material, onDelete, onUpdateTitle, variants }: Ma
       transition={{ type: "spring", stiffness: 400, damping: 17 }}
     >
       <Card className="clean-card overflow-hidden h-full flex flex-col group relative">
-        {/* Cover Image */}
         <div className="aspect-video relative bg-muted">
             {material.image_uri ? (
                 <img 
@@ -71,7 +75,6 @@ export function MaterialCard({ material, onDelete, onUpdateTitle, variants }: Ma
                 </div>
             )}
             
-            {/* Status Badge */}
             <div className="absolute top-3 right-3">
                 {isProcessing && <Badge variant="secondary" className="bg-white/90 backdrop-blur text-blue-600 shadow-sm"><Loader2 className="w-3 h-3 mr-1 animate-spin"/> Processing</Badge>}
                 {isFailed && <Badge variant="destructive" className="shadow-sm"><AlertCircle className="w-3 h-3 mr-1"/> Failed</Badge>}
@@ -93,70 +96,21 @@ export function MaterialCard({ material, onDelete, onUpdateTitle, variants }: Ma
                 </Link>
             </Button>
             
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button 
-                        variant="outline" 
-                        size="icon" 
-                        className="h-10 w-10 bg-white border-border hover:bg-muted transition-colors"
-                        disabled={isProcessing}
-                    >
-                        <MoreVertical className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-white">
-                    <DropdownMenuItem 
-                        className="cursor-pointer"
-                        onClick={() => {
-                            setNewTitle(material.title);
-                            setIsEditDialogOpen(true);
-                        }}
-                    >
-                        <Edit2 className="mr-2 h-4 w-4" />
-                        Edit Title
-                    </DropdownMenuItem>
-                    
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <DropdownMenuItem 
-                                className="text-destructive focus:text-destructive cursor-pointer"
-                                onSelect={(e) => e.preventDefault()}
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                            </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="clean-card border-border">
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Material?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will permanently delete "{material.title}" and all its generated recycling plans.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-                                <AlertDialogAction 
-                                    onClick={() => onDelete(material.id)}
-                                    className="bg-[#ef4444] text-white hover:bg-[#dc2626] rounded-xl"
-                                >
-                                    Delete
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <EntityActions
+              onDelete={() => onDelete(material.id)}
+              deleteTitle="Delete Material?"
+              deleteDescription={`This will permanently delete "${material.title}" and all its generated recycling plans.`}
+              extraActions={extraActions}
+              disabled={isProcessing}
+            />
         </CardFooter>
       </Card>
 
-      {/* Edit Title Dialog (using AlertDialog for structure) */}
       <AlertDialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <AlertDialogContent className="clean-card border-border sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Edit Material Title</AlertDialogTitle>
-            <AlertDialogDescription>
-              Enter a new title for this material.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Enter a new title for this material.</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
             <Input 
@@ -169,12 +123,8 @@ export function MaterialCard({ material, onDelete, onUpdateTitle, variants }: Ma
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleUpdate} className="alive-button rounded-xl px-6">
-              Save Changes
-            </AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl" onClick={() => setIsEditDialogOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUpdate} className="alive-button rounded-xl px-6">Save Changes</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -1,13 +1,14 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { useMaterialDetail } from '@/hooks/use-materials';
 import { WayCard } from '@/components/materials/way-card';
 import { GenerationLoader } from '@/components/materials/generation-loader';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTitle } from '@/hooks/use-title';
 import ReactMarkdown from 'react-markdown';
+
+import { BackButton } from '@/components/ui/back-button';
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -45,9 +46,7 @@ export default function MaterialDetailPage() {
   if (isProcessing) {
       return (
           <div className="container mx-auto px-4 py-8 max-w-6xl">
-              <Button variant="ghost" asChild className="mb-6 hover:bg-muted -ml-4">
-                <Link to="/materials"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Materials</Link>
-              </Button>
+              <BackButton to="/materials" label="Back to Materials" />
               <GenerationLoader />
           </div>
       );
@@ -55,9 +54,7 @@ export default function MaterialDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <Button variant="ghost" asChild className="mb-6 hover:bg-muted -ml-4">
-        <Link to="/materials"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Materials</Link>
-      </Button>
+      <BackButton to="/materials" label="Back to Materials" />
 
       {/* Header Section */}      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
         <div className="md:col-span-1">

@@ -1,25 +1,20 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Map, MoreVertical, Trash2 } from 'lucide-react';
+import { Map } from 'lucide-react';
 import { motion } from 'framer-motion';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { EntityActions } from '@/components/ui/action-dropdown';
 import { ImpactPayloadResponse } from '@/types';
 
 interface Impact extends ImpactPayloadResponse {}
 
 interface ImpactCardProps {
   impact: Impact;
-  onDeleteRequest: (id: string) => void;
+  onDelete: (id: string) => void;
   variants: any;
 }
 
-export function ImpactCard({ impact, onDeleteRequest, variants }: ImpactCardProps) {
+export function ImpactCard({ impact, onDelete, variants }: ImpactCardProps) {
   return (
     <motion.div 
         variants={variants}
@@ -54,22 +49,11 @@ export function ImpactCard({ impact, onDeleteRequest, variants }: ImpactCardProp
                 </Link>
             </Button>
             
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-10 w-10 bg-white border-border hover:bg-muted transition-colors">
-                        <MoreVertical className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-white">
-                    <DropdownMenuItem 
-                        className="text-destructive focus:text-destructive cursor-pointer"
-                        onClick={() => onDeleteRequest(impact.id)}
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <EntityActions
+              onDelete={() => onDelete(impact.id)}
+              deleteTitle="Delete Impact Plan?"
+              deleteDescription={`This will permanently delete your "${impact.title}" plan and all associated progress.`}
+            />
           </CardFooter>
         </Card>
     </motion.div>

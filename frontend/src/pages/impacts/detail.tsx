@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import api from '@/lib/api';
 import { ImpactPayloadResponse, ImpactStepPayloadResponse } from '@/types';
-import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { StepItem } from '@/components/impacts/step-item';
 import { useTitle } from '@/hooks/use-title';
+
+import { BackButton } from '@/components/ui/back-button';
 
 // Helper to sort steps
 const getSortedSteps = (stepsDict: Record<string, ImpactStepPayloadResponse>) => {
@@ -96,9 +97,7 @@ export default function ImpactDetailPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-8 pb-32 pt-8">
       <div className="space-y-4">
-        <Button variant="ghost" asChild className="hover:bg-muted -ml-4">
-            <Link to="/impacts"><ArrowLeft className="w-4 h-4 mr-2"/> Back to Impacts</Link>
-        </Button>
+        <BackButton to="/impacts" label="Back to Impacts" />
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-4xl font-extrabold text-foreground tracking-tight">
                 {impact.title}

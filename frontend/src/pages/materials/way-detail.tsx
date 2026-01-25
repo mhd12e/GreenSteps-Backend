@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import api from '@/lib/api';
 import { MaterialWay } from '@/types';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useTitle } from '@/hooks/use-title';
+
+import { BackButton } from '@/components/ui/back-button';
 
 export default function WayDetailPage() {
   const { id, wayId } = useParams<{ id: string; wayId: string }>();
@@ -40,9 +41,7 @@ export default function WayDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Button variant="ghost" asChild className="mb-6 hover:bg-muted -ml-4">
-            <Link to={`/materials/${id}`}><ArrowLeft className="w-4 h-4 mr-2"/> Back to Plans</Link>
-        </Button>
+        <BackButton to={`/materials/${id}`} label="Back to Plans" />
 
         <div className="bg-card rounded-3xl overflow-hidden shadow-sm border border-border">
             <div className="aspect-video relative bg-muted">
