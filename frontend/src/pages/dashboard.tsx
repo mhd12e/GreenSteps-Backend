@@ -66,8 +66,13 @@ export default function Dashboard() {
         className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto"
       >
         {/* Impact AI Card */}
-        <motion.div variants={itemVariants} className="h-full">
-            <Card className="clean-card h-full flex flex-col relative overflow-hidden group border-primary/20 hover:border-primary/50 transition-colors">
+        <motion.div 
+            variants={itemVariants} 
+            whileHover={{ scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="h-full"
+        >
+            <Card className="clean-card h-full flex flex-col relative overflow-hidden group border-primary/20 hover:border-primary/50">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <Leaf className="w-32 h-32 text-primary" />
                 </div>
@@ -81,7 +86,7 @@ export default function Dashboard() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="mt-auto pt-6">
-                    <Button asChild size="lg" className="alive-button w-full text-lg font-semibold group-hover:scale-[1.02] transition-transform">
+                    <Button asChild size="lg" className="alive-button w-full text-lg font-semibold">
                         <Link to="/impacts">
                             Launch Impact AI <ArrowRight className="ml-2 w-5 h-5" />
                         </Link>
@@ -91,8 +96,13 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Material AI Card */}
-        <motion.div variants={itemVariants} className="h-full">
-            <Card className="clean-card h-full flex flex-col relative overflow-hidden group border-teal-500/20 hover:border-teal-500/50 transition-colors">
+        <motion.div 
+            variants={itemVariants} 
+            whileHover={{ scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            className="h-full"
+        >
+            <Card className="clean-card h-full flex flex-col relative overflow-hidden group border-teal-500/20 hover:border-teal-500/50">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <Bot className="w-32 h-32 text-teal-600" />
                 </div>

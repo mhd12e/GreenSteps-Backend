@@ -13,7 +13,9 @@ import { Mail, Lock, User, Calendar, Eye, EyeOff } from 'lucide-react';
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  full_name: z.string().min(2, 'Full name must be at least 2 words'),
+  full_name: z.string().trim().refine((val) => val.split(/\s+/).length >= 2, {
+    message: 'Please enter your full name (first and last name)',
+  }),
   age: z.coerce.number().min(3).max(120),
   interests: z.array(z.string()).min(1, 'Add at least one interest'),
 });
@@ -139,7 +141,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
                                 value={field.value} 
                                 onChange={field.onChange} 
                                 placeholder="Add interests (Eco, Vegan...)" 
-                                className="bg-gray-50 border-gray-200 focus-within:bg-white focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-500/10 rounded-xl min-h-[48px] p-3 font-medium transition-all"
+                                className="bg-gray-50 border border-gray-200 focus-within:bg-white focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-500/10 rounded-xl min-h-[48px] p-3 font-medium transition-all"
                             />
                         </FormControl>
                         <FormMessage />

@@ -39,7 +39,7 @@ export const TagsInput = forwardRef<HTMLDivElement, TagsInputProps>(
       <div
         ref={ref}
         className={cn(
-          "flex flex-wrap gap-2 p-2 border rounded-md bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all",
+          "flex flex-wrap gap-2 p-2 transition-all cursor-text",
           className
         )}
         onClick={() => inputRef.current?.focus()}

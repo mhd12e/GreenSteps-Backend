@@ -70,7 +70,7 @@ export default function SessionPage() {
 
         // 2. Setup Audio Context
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        const audioCtx = new AudioContextClass({ sampleRate: 24000 }); // Try to prefer 24k output if possible, but input will vary
+        const audioCtx = new AudioContextClass(); // Use system default sample rate
         audioContextRef.current = audioCtx;
         
         const analyser = audioCtx.createAnalyser();
@@ -350,20 +350,10 @@ export default function SessionPage() {
 
 
                   <Button 
-
-
-                      variant="destructive"
-
-
+                      variant="outline"
                       size="lg" 
-
-
-                      className="w-full rounded-full px-8 py-8 text-xl font-bold shadow-md hover:shadow-lg transition-all hover:scale-105 active:scale-95 gap-3"
-
-
+                      className="w-full rounded-full px-8 py-8 text-xl font-bold shadow-md hover:shadow-lg transition-all hover:scale-105 active:scale-95 gap-3 bg-white text-foreground border border-border hover:bg-muted"
                       asChild
-
-
                   >
 
 

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import AuthPage from '@/pages/auth/auth-page';
 import Dashboard from '@/pages/dashboard';
@@ -8,6 +8,9 @@ import ImpactDetailPage from '@/pages/impacts/detail';
 import ProfilePage from '@/pages/profile';
 import MaterialAI from '@/pages/materials/coming-soon';
 import SessionPage from '@/pages/session';
+import TermsOfService from '@/pages/legal/terms-of-service';
+import PrivacyPolicy from '@/pages/legal/privacy-policy';
+import NotFoundPage from '@/pages/not-found';
 import { MainLayout } from '@/components/main-layout';
 import { ProtectedRoute } from '@/components/protected-route';
 import { HealthGuard } from '@/components/health-guard';
@@ -23,6 +26,8 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<AuthPage />} />
           <Route path="/register" element={<AuthPage />} />
+          <Route path="/legal/terms" element={<TermsOfService />} />
+          <Route path="/legal/privacy" element={<PrivacyPolicy />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
@@ -39,7 +44,7 @@ function App() {
           </Route>
 
           {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </HealthGuard>
     </BrowserRouter>

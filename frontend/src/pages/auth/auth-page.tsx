@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import { motion, AnimatePresence } from 'framer-motion';
 import logo from '@/assets/logo.png';
@@ -122,8 +122,11 @@ export default function AuthPage() {
         </div>
       </motion.div>
 
-      <div className="mt-8 text-xs text-gray-500 text-center max-w-sm">
-        By continuing, you agree to our Terms of Service and Privacy Policy.
+      <div className="mt-8 text-xs text-gray-500 text-center max-w-sm leading-relaxed">
+        By continuing, you agree to our{' '}
+        <Link to="/legal/terms" className="text-primary hover:underline font-medium">Terms of Service</Link>{' '}
+        and{' '}
+        <Link to="/legal/privacy" className="text-primary hover:underline font-medium">Privacy Policy</Link>.
       </div>
     </div>
   );
