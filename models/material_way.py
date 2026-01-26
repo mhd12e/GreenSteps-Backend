@@ -23,6 +23,9 @@ class MaterialWay(Base):
     # Full guide output (markdown) for this way
     md = Column(Text, nullable=False)
 
+    image_uri = Column(String, nullable=True)
+
     created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     material = relationship("Material", back_populates="ways")

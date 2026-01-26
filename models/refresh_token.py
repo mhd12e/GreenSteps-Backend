@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, ForeignKey
+from sqlalchemy import Column, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from core.database import Base
@@ -13,4 +13,7 @@ class RefreshToken(Base):
     token_hash = Column(String, unique=True, nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False, index=True)
     revoked_at = Column(DateTime, nullable=True)
+    is_used = Column(Boolean, nullable=False, default=False, server_default="false")
+    user_agent = Column(String, nullable=True)
+    ip_address = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now())

@@ -1,58 +1,12 @@
-import json
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-from google import genai
-from google.genai.errors import ClientError
 from models import Impact, Step, User
-from core.config import settings
 from core.logging import logger
+from services.ai.gemini_impact import gemini_impact
 
-MODEL = settings.IMPACT_GENERATION_MODEL
 MAX_STEPS = 12
 MAX_TITLE_LEN = 120
 MAX_DESC_LEN = 400
-
-try:
-    client = genai.Client()
-except Exception:
-    logger.exception("Failed to create Google GenAI client")
-    client = None
-
-
-def _extract_json(text: str) -> dict:
-    if not text:
-        raise ValueError("Empty AI response")
-    cleaned = text.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`")
-        if cleaned.lower().startswith("json"):
-            cleaned = cleaned[4:].lstrip()
-    start = cleaned.find("{")
-    end = cleaned.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        raise ValueError("No JSON object found")
-    snippet = cleaned[start : end + 1]
-    return json.loads(snippet)
-
-
-def _response_to_text(response) -> str:
-    if response is None:
-        return ""
-    parsed = getattr(response, "parsed", None)
-    if isinstance(parsed, dict):
-        return json.dumps(parsed)
-    if getattr(response, "text", None):
-        return response.text
-    candidates = getattr(response, "candidates", None) or []
-    if not candidates:
-        return ""
-    parts = getattr(candidates[0].content, "parts", None) or []
-    texts = []
-    for part in parts:
-        if getattr(part, "text", None):
-            texts.append(part.text)
-    return "\n".join(texts)
-
 
 def _validate_ai_payload(payload: dict) -> dict:
     if not isinstance(payload, dict):
@@ -60,6 +14,7 @@ def _validate_ai_payload(payload: dict) -> dict:
     title = payload.get("title")
     description = payload.get("descreption") or payload.get("description")
     steps = payload.get("steps")
+    
     if not isinstance(title, str) or not title.strip():
         raise ValueError("Missing title")
     if not isinstance(description, str) or not description.strip():
@@ -72,6 +27,7 @@ def _validate_ai_payload(payload: dict) -> dict:
 
     parsed_steps = []
     seen_orders = set()
+    
     if isinstance(steps, list):
         step_items = list(enumerate(steps, start=1))
     elif isinstance(steps, dict):
@@ -84,20 +40,25 @@ def _validate_ai_payload(payload: dict) -> dict:
             order = int(str(key).strip())
         except ValueError:
             raise ValueError("Step keys must be numeric")
+        
         if order in seen_orders:
             raise ValueError("Duplicate step order")
         seen_orders.add(order)
+        
         if not isinstance(step, dict):
             raise ValueError("Step must be an object")
+            
         step_title = step.get("title")
         step_description = step.get("descreption") or step.get("description")
         step_icon = step.get("icon")
+        
         if not isinstance(step_title, str) or not step_title.strip():
             raise ValueError("Step title missing")
         if not isinstance(step_description, str) or not step_description.strip():
             raise ValueError("Step descreption missing")
         if not isinstance(step_icon, str) or not step_icon.strip():
             raise ValueError("Step icon missing")
+            
         parsed_steps.append(
             {
                 "order": order,
@@ -110,91 +71,43 @@ def _validate_ai_payload(payload: dict) -> dict:
     parsed_steps.sort(key=lambda item: item["order"])
     if len(parsed_steps) > MAX_STEPS:
         raise ValueError("Too many steps")
+    if not parsed_steps:
+        raise ValueError("No steps generated")
     if parsed_steps[0]["order"] != 1:
         raise ValueError("Step order must start at 1")
+        
     expected = list(range(1, len(parsed_steps) + 1))
     if [step["order"] for step in parsed_steps] != expected:
         raise ValueError("Step order must be sequential")
+        
     return {"title": title, "description": description, "steps": parsed_steps}
-
-
-def _generate_impact_payload(topic: str, user: User) -> tuple[dict, str]:
-    if client is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={"code": "ai_unavailable", "message": "AI client not available"},
-        )
-    user_name = user.full_name
-    user_age = user.age
-    user_interests = ", ".join(user.interests or [])
-    prompt = f"""
-You are a sustainability expert, totur, you will help the user optimize and make there setup sustainable and safe on the environment.
-You are generating a structured plan in JSON. Output ONLY valid JSON with this exact shape:
-{{
-  "title": "impact title",
-  "descreption": "impact short descreption",
-  "steps": {{
-    "1": {{
-      "title": "step title",
-      "descreption": "step full blown descreption",
-      "icon": "fa-solid fa-recycle"
-    }}
-  }}
-}}
-
-User input Topic: {topic}
-User Profile:
-- Full Name: {user_name}
-- Age: {user_age}
-- Interests: {user_interests}
-Rules:
-- Use 3 to 8 steps strictly.
-- Steps must be actionable and ordered.
-- Keep descriptions concise but clear.
-- Provide a unique Font Awesome CSS class string for each step icon.
-Tone rules:
-- Tailor explanations to the user's age and interests so guidance is easy to understand.
-- This session is private and has zero logging; do not state otherwise.
-"""
-    try:
-        response = client.models.generate_content(
-            model=MODEL,
-            contents=prompt,
-            config={"response_mime_type": "application/json"},
-        )
-    except ClientError as exc:
-        logger.warning("AI model unavailable: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={"code": "ai_unavailable", "message": "AI model unavailable"},
-        ) from exc
-    text = _response_to_text(response)
-    return _extract_json(text), text
-
 
 def create_impact_from_prompt(db: Session, user: User, topic: str):
     raw_text = ""
     try:
-        payload, raw_text = _generate_impact_payload(topic, user)
-        parsed = _validate_ai_payload(payload)
+        try:
+            payload, raw_text = gemini_impact.generate_impact_payload(topic, user)
+            parsed = _validate_ai_payload(payload)
+        except Exception as exc:
+            logger.warning(f"First AI attempt failed: {exc}. Retrying...")
+            payload, raw_text = gemini_impact.generate_impact_payload(topic, user)
+            parsed = _validate_ai_payload(payload)
     except HTTPException:
         raise
     except Exception as exc:
-        try:
-            payload, raw_text = _generate_impact_payload(topic, user)
-            parsed = _validate_ai_payload(payload)
-        except Exception as retry_exc:
-            preview = (raw_text or "").strip()
-            if len(preview) > 1200:
-                preview = preview[:1200] + "...(truncated)"
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "code": "invalid_ai_output",
-                    "message": "AI output invalid",
-                    "details": {"ai_output_preview": preview},
-                },
-            ) from retry_exc
+        preview = (raw_text or "").strip()
+        if len(preview) > 1200:
+            preview = preview[:1200] + "...(truncated)"
+        
+        logger.error(f"AI impact generation failed: {exc}. Raw: {preview}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "invalid_ai_output",
+                "message": "AI output invalid or parsing failed",
+                "details": {"ai_output_preview": preview},
+            },
+        ) from exc
 
     impact = Impact(
         title=parsed["title"],
@@ -205,14 +118,14 @@ def create_impact_from_prompt(db: Session, user: User, topic: str):
     db.flush()
 
     steps = []
-    for idx, step in enumerate(parsed["steps"], start=1):
+    for step_data in parsed["steps"]:
         steps.append(
             Step(
-                title=step["title"],
-                description=step["description"],
-                icon=step["icon"],
-                order=step["order"],
-                unlocked=step["order"] == 1,
+                title=step_data["title"],
+                description=step_data["description"],
+                icon=step_data["icon"],
+                order=step_data["order"],
+                unlocked=step_data["order"] == 1,
                 owner_id=user.id,
                 impact_id=impact.id,
             )
@@ -221,7 +134,6 @@ def create_impact_from_prompt(db: Session, user: User, topic: str):
     db.commit()
     db.refresh(impact)
     return impact, steps
-
 
 def get_impact_with_steps(db: Session, user_id: str, impact_id: str):
     impact = (
@@ -242,7 +154,6 @@ def get_impact_with_steps(db: Session, user_id: str, impact_id: str):
     )
     return impact, steps
 
-
 def delete_impact(db: Session, user_id: str, impact_id: str) -> str:
     impact = (
         db.query(Impact)
@@ -254,13 +165,14 @@ def delete_impact(db: Session, user_id: str, impact_id: str) -> str:
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "impact_not_found", "message": "Impact not found"},
         )
+    
+    # Steps are also deleted via database cascading if configured, but let's be explicit
     db.query(Step).filter(Step.impact_id == impact.id, Step.owner_id == user_id).delete(
         synchronize_session=False
     )
     db.delete(impact)
     db.commit()
     return str(impact.id)
-
 
 def list_impacts(db: Session, user_id: str) -> list[str]:
     impact_ids = (

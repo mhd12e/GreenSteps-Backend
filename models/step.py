@@ -21,8 +21,8 @@ class Step(Base):
     # Controls whether user can access this step
     unlocked = Column(Boolean, nullable=False, default=False)
 
-    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    impact_id = Column(UUID(as_uuid=True), ForeignKey("impacts.id"), nullable=False)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    impact_id = Column(UUID(as_uuid=True), ForeignKey("impacts.id", ondelete="CASCADE"), nullable=False)
 
     created_at = Column(DateTime, server_default=func.now())
 

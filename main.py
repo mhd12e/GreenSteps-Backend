@@ -4,10 +4,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.exceptions import HTTPException, RequestValidationError
 from mangum import Mangum
-from api.routes import auth, voice, impact, users, system, materials
+from api.routes import auth, impact, users, system, materials
 from core.database import Base, engine
 from core.error_handling import http_exception_handler, generic_exception_handler, validation_exception_handler
 from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
+from services.material_queue import start_worker, stop_worker
 
 app = FastAPI(
     title="GreenSteps API",
@@ -39,6 +40,11 @@ app = FastAPI(
 def on_startup():
     # Optional: only if you REALLY want auto-create tables
     Base.metadata.create_all(bind=engine)
+    start_worker()
+
+@app.on_event("shutdown")
+def on_shutdown():
+    stop_worker()
 
 app.add_middleware(
     CORSMiddleware,
@@ -47,6 +53,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none';"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
 
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
@@ -61,7 +77,6 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
 app.include_router(auth.router)
-app.include_router(voice.router)
 app.include_router(impact.router)
 app.include_router(users.router)
 app.include_router(system.router)

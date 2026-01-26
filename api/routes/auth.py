@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from schemas.auth import (
     RegisterRequest,
@@ -11,6 +11,7 @@ from schemas.auth import (
 from schemas.error import ErrorResponse
 from schemas.common import Envelope
 from services import auth as auth_service
+from services.turnstile import verify_turnstile_token
 from core.database import get_db
 from api.deps import get_current_user, get_current_active_user, rate_limit_user, rate_limit_ip
 
@@ -22,7 +23,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     dependencies=[Depends(rate_limit_ip)],
     responses={409: {"model": ErrorResponse, "description": "Email already registered"}},
 )
-def register(data: RegisterRequest, db: Session = Depends(get_db)):
+def register(request: Request, data: RegisterRequest, db: Session = Depends(get_db)):
+    verify_turnstile_token(data.turnstile_token, remote_ip=request.client.host)
     auth_service.register(db, data.email, data.full_name, data.age, data.interests, data.password)
     return Envelope()
 
@@ -32,8 +34,11 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     dependencies=[Depends(rate_limit_ip)],
     responses={401: {"model": ErrorResponse, "description": "Incorrect email or password"}}
 )
-def login(data: LoginRequest, db: Session = Depends(get_db)):
-    tokens = auth_service.login(db, data.email, data.password)
+def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
+    verify_turnstile_token(data.turnstile_token, remote_ip=request.client.host)
+    user_agent = request.headers.get("user-agent")
+    ip_address = request.client.host
+    tokens = auth_service.login(db, data.email, data.password, user_agent=user_agent, ip_address=ip_address)
     if not tokens:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -58,8 +63,12 @@ def protected(user_id=Depends(get_current_user)):
     dependencies=[Depends(rate_limit_ip)],
     responses={401: {"model": ErrorResponse, "description": "Invalid refresh token"}},
 )
-def refresh_token_endpoint(refresh_token_data: RefreshTokenRequest, db: Session = Depends(get_db)):
-    new_access_token, new_refresh_token = auth_service.refresh(db, refresh_token_data.refresh_token)
+def refresh_token_endpoint(request: Request, refresh_token_data: RefreshTokenRequest, db: Session = Depends(get_db)):
+    user_agent = request.headers.get("user-agent")
+    ip_address = request.client.host
+    new_access_token, new_refresh_token = auth_service.refresh(
+        db, refresh_token_data.refresh_token, user_agent=user_agent, ip_address=ip_address
+    )
     return Envelope(
         data=TokenResponse(access_token=new_access_token, refresh_token=new_refresh_token)
     )

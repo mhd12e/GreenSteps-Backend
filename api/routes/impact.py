@@ -9,9 +9,11 @@ from schemas.impact import (
     ImpactPayloadResponse,
     ImpactListResponse,
 )
+from schemas.voice import VoiceTokenRequest, VoiceTokenResponse
 from schemas.error import ErrorResponse
 from schemas.common import Envelope
 from services import impact as impact_service
+from services.voice_tokens import create_ephemeral_token
 from core.database import get_db
 from api.deps import get_current_active_user, rate_limit_user
 
@@ -117,3 +119,22 @@ def delete_impact(
 ):
     deleted_id = impact_service.delete_impact(db, current_user.id, impact_id)
     return Envelope(data=ImpactDeleteData(impact_id=deleted_id))
+
+
+@router.post(
+    "/voice/token",
+    response_model=Envelope[VoiceTokenResponse],
+    dependencies=[Depends(rate_limit_user)],
+    responses={
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        404: {"model": ErrorResponse, "description": "Step not found"},
+        503: {"model": ErrorResponse, "description": "AI token unavailable"},
+    },
+)
+def create_voice_token(
+    payload: VoiceTokenRequest,
+    user=Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    token_data = create_ephemeral_token(db, user, payload.step_id)
+    return Envelope(data=VoiceTokenResponse(**token_data))

@@ -6,6 +6,7 @@ class RegisterRequest(BaseModel):
     full_name: str
     age: int = Field(ge=3, le=120)
     interests: list[str]
+    turnstile_token: str
 
     @field_validator("email")
     @classmethod
@@ -39,6 +40,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    turnstile_token: str
 
     @field_validator("email")
     @classmethod

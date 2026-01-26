@@ -25,5 +25,7 @@ class Settings(BaseSettings):
     R2_SECRET_ACCESS_KEY: str
     R2_BUCKET: str
 
+    TURNSTILE_SECRET_KEY: str
+
 
 settings = Settings()

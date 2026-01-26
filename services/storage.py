@@ -40,4 +40,43 @@ class R2Storage:
             logger.error(f"Failed to upload to R2: {e}")
             raise e
 
+    def download_file_bytes(self, key: str) -> bytes | None:
+        """Downloads file content as bytes directly from S3/R2."""
+        if not self.s3:
+            return None
+        
+        try:
+            response = self.s3.get_object(Bucket=self.bucket_name, Key=key)
+            return response['Body'].read()
+        except Exception as e:
+            logger.error(f"Failed to download {key}: {e}")
+            raise e
+
+    def delete_folder(self, prefix: str):
+        """
+        Deletes all objects with the given prefix (simulating folder deletion).
+        """
+        try:
+            # List all objects with the prefix
+            paginator = self.s3.get_paginator('list_objects_v2')
+            pages = paginator.paginate(Bucket=self.bucket_name, Prefix=prefix)
+
+            delete_us = []
+            for page in pages:
+                if 'Contents' in page:
+                    for obj in page['Contents']:
+                        delete_us.append({'Key': obj['Key']})
+            
+            # Delete in batches (though delete_objects handles up to 1000)
+            if delete_us:
+                # Simple batching if > 1000 needed, but for now assuming small folder
+                self.s3.delete_objects(
+                    Bucket=self.bucket_name,
+                    Delete={'Objects': delete_us}
+                )
+        except Exception as e:
+            logger.error(f"Failed to delete folder {prefix}: {e}")
+            # Don't raise, just log. Deletion failure shouldn't block DB delete.
+
+
 r2_storage = R2Storage()

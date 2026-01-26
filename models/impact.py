@@ -13,8 +13,8 @@ class Impact(Base):
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
 
-    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     created_at = Column(DateTime, server_default=func.now())
 
-    steps = relationship("Step", back_populates="impact")
+    steps = relationship("Step", back_populates="impact", cascade="all, delete-orphan")

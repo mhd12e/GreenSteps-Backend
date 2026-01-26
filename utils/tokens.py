@@ -4,15 +4,20 @@ from jose import jwt, JWTError
 from core.config import settings
 from fastapi import HTTPException, status
 
+import uuid
+
 TOKEN_TYPE_ACCESS = "access"
 TOKEN_TYPE_REFRESH = "refresh"
 
 
 def create_token(subject: str, expires_delta: timedelta, token_type: str):
+    now = datetime.utcnow()
     payload = {
         "sub": subject,
-        "exp": datetime.utcnow() + expires_delta,
-        "iat": datetime.utcnow(),
+        "exp": now + expires_delta,
+        "iat": now,
+        "nbf": now,
+        "jti": uuid.uuid4().hex,
         "typ": token_type,
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
