@@ -8,11 +8,19 @@ from core.config import settings
 from core.rate_limit import InMemoryRateLimiter, RateLimitConfig
 
 security = HTTPBearer()
-rate_limiter = InMemoryRateLimiter(
-    RateLimitConfig(limit=settings.RATE_LIMIT_PER_MINUTE, window_seconds=60)
+
+# --- Rate Limiters ---
+# 1. Standard (Browsing, Listing) - 60/min
+limiter_standard = InMemoryRateLimiter(
+    RateLimitConfig(limit=settings.RATE_LIMIT_STANDARD_PER_MINUTE, window_seconds=60)
 )
-ip_rate_limiter = InMemoryRateLimiter(
-    RateLimitConfig(limit=settings.RATE_LIMIT_IP_PER_MINUTE, window_seconds=60)
+# 2. Auth (Login, Register) - 5/min (Strict brute force protection)
+limiter_auth = InMemoryRateLimiter(
+    RateLimitConfig(limit=settings.RATE_LIMIT_AUTH_PER_MINUTE, window_seconds=60)
+)
+# 3. AI (Generation) - 5/hour (Very strict to prevent abuse/cost)
+limiter_ai = InMemoryRateLimiter(
+    RateLimitConfig(limit=settings.RATE_LIMIT_AI_PER_HOUR, window_seconds=3600)
 )
 
 def get_current_user(
@@ -35,19 +43,30 @@ def get_current_user(
         )
     return user_id
 
-def rate_limit_user(
+# --- Rate Limit Dependencies ---
+
+def rate_limit_standard(
     request: Request,
     user_id: str = Depends(get_current_user),
 ):
-    key = f"{user_id}:{request.method}:{request.url.path}"
-    rate_limiter.check(key)
+    """Standard rate limit for authenticated users."""
+    key = f"std:{user_id}"
+    limiter_standard.check(key)
 
-
-def rate_limit_ip(request: Request):
+def rate_limit_auth(request: Request):
+    """Strict rate limit for auth endpoints by IP."""
     client = request.client
     ip = client.host if client else "unknown"
-    key = f"{ip}:{request.method}:{request.url.path}"
-    ip_rate_limiter.check(key)
+    key = f"auth:{ip}"
+    limiter_auth.check(key)
+
+def rate_limit_ai(
+    request: Request,
+    user_id: str = Depends(get_current_user),
+):
+    """Strict rate limit for AI generation by User ID."""
+    key = f"ai:{user_id}"
+    limiter_ai.check(key)
 
 def get_current_active_user(user_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()

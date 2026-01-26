@@ -19,9 +19,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Loader2, Sparkles, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
+import { TURNSTILE_SITE_KEY_AI } from '@/lib/config';
+import { useRef } from 'react';
 
 const generateSchema = z.object({
   topic: z.string().min(3, 'Topic must be at least 3 characters').max(200),
+  turnstile_token: z.string().min(1, 'Please complete the security check'),
 });
 
 type GenerateFormValues = z.infer<typeof generateSchema>;
@@ -29,11 +33,13 @@ type GenerateFormValues = z.infer<typeof generateSchema>;
 export default function GenerateImpactPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const form = useForm<GenerateFormValues>({
     resolver: zodResolver(generateSchema),
     defaultValues: {
       topic: '',
+      turnstile_token: '',
     },
   });
 
@@ -49,6 +55,8 @@ export default function GenerateImpactPage() {
       const msg = error.response?.data?.error?.message || 'Failed to generate impact. Please try again.';
       toast.error(msg);
       form.setError('topic', { message: msg });
+      turnstileRef.current?.reset();
+      form.setValue('turnstile_token', '');
     } finally {
       setLoading(false);
     }
@@ -90,7 +98,26 @@ export default function GenerateImpactPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" size="lg" className="alive-button w-full rounded-full py-6 text-lg font-bold" disabled={loading}>
+
+              <FormField
+                control={form.control}
+                name="turnstile_token"
+                render={({ field }) => (
+                  <FormItem className="hidden">
+                    <FormControl>
+                      <Turnstile
+                        ref={turnstileRef}
+                        siteKey={TURNSTILE_SITE_KEY_AI}
+                        onSuccess={(token) => field.onChange(token)}
+                        options={{ appearance: 'always' }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button type="submit" size="lg" className="alive-button w-full rounded-full py-6 text-lg font-bold" disabled={loading || !form.getValues('turnstile_token')}>
                 {loading ? (
                     <>
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating Plan...

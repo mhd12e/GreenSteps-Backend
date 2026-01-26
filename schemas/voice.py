@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 class VoiceTokenRequest(BaseModel):
     step_id: str = Field(min_length=1)
+    turnstile_token: str
 
 
 class VoiceTokenResponse(BaseModel):

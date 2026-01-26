@@ -1,34 +1,25 @@
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from typing import List
-import uuid
+from api.deps import get_current_user, rate_limit_standard, rate_limit_ai
 
-from core.database import get_db
-from api.deps import get_current_user
-from services.material_service import (
-    create_initial_material, 
-    get_material,
-    list_materials,
-    update_material,
-    delete_material
-)
-from services.material_queue import enqueue_material
-from schemas.materials import MaterialResponse, MaterialUpdate
-from schemas.common import Envelope
+from core.config import settings
+from services.turnstile import verify_turnstile_token
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
 @router.post("/generate", response_model=Envelope[MaterialResponse], status_code=status.HTTP_202_ACCEPTED)
 async def generate_material(
+    request: Request,
     title: str = Form(...),
     image: UploadFile = File(...),
+    turnstile_token: str = Form(...),
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user),
+    _ = Depends(rate_limit_ai)
 ):
     """
     Create a new material and start the AI generation pipeline in the background.
     Returns the initial record immediately.
     """
+    verify_turnstile_token(turnstile_token, secret_key=settings.TURNSTILE_SECRET_KEY_AI_ACTIONS, remote_ip=request.client.host)
     if not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
 
@@ -73,6 +64,7 @@ def list_user_materials(
     limit: int = 100,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user),
+    _ = Depends(rate_limit_standard)
 ):
     """List all materials owned by the current user."""
     owner_uuid = uuid.UUID(user_id)
@@ -84,6 +76,7 @@ def get_material_detail(
     material_id: uuid.UUID,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user),
+    _ = Depends(rate_limit_standard)
 ):
     """Get full details of a specific material, including recycling ways."""
     owner_uuid = uuid.UUID(user_id)
@@ -98,6 +91,7 @@ def edit_material_title(
     data: MaterialUpdate,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user),
+    _ = Depends(rate_limit_standard)
 ):
     """Update only the title of a specific material."""
     owner_uuid = uuid.UUID(user_id)
@@ -111,6 +105,7 @@ def delete_user_material(
     material_id: uuid.UUID,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user),
+    _ = Depends(rate_limit_standard)
 ):
     """Delete a material and its associated assets from R2."""
     owner_uuid = uuid.UUID(user_id)
@@ -124,6 +119,7 @@ def get_material_status(
     material_id: uuid.UUID,
     db: Session = Depends(get_db),
     user_id: str = Depends(get_current_user),
+    _ = Depends(rate_limit_standard)
 ):
     """Lightweight endpoint to poll for generation status."""
     owner_uuid = uuid.UUID(user_id)

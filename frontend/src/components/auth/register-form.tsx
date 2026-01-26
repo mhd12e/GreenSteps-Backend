@@ -10,7 +10,7 @@ import { TagsInput } from '@/components/ui/tags-input';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Mail, Lock, User, Calendar, Eye, EyeOff } from 'lucide-react';
 import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
-import { TURNSTILE_SITE_KEY } from '@/lib/config';
+import { TURNSTILE_SITE_KEY_AUTH } from '@/lib/config';
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -164,7 +164,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
                         <FormControl>
                             <Turnstile
                                 ref={turnstileRef}
-                                siteKey={TURNSTILE_SITE_KEY}
+                                siteKey={TURNSTILE_SITE_KEY_AUTH}
                                 onSuccess={(token) => field.onChange(token)}
                                 onExpire={() => field.onChange('')}
                                 onError={() => field.onChange('')}

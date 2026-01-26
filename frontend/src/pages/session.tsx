@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, AlertCircle, XCircle } from 'lucide-react';
 import { Visualizer } from '@/components/voice/visualizer';
 import { GoogleGenAI, Modality } from '@google/genai';
+import { Turnstile } from '@marsidev/react-turnstile';
+import { TURNSTILE_SITE_KEY_AI } from '@/lib/config';
 
 // Helper: Downsample to 16kHz
 const downsampleTo16k = (buffer: Float32Array, sampleRate: number): Int16Array => {
@@ -46,6 +48,7 @@ export default function SessionPage() {
   const [status, setStatus] = useState<'idle' | 'initializing' | 'connected' | 'error'>('idle');
   const [volume, setVolume] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -61,10 +64,15 @@ export default function SessionPage() {
     let cleanup = false;
 
     const initSession = async () => {
+      if (!captchaToken) return;
+      
       setStatus('initializing');
       try {
         // 1. Get Token
-        const tokenData = await api.post<unknown, VoiceTokenResponse>('/impact/voice/token', { step_id: stepId });
+        const tokenData = await api.post<unknown, VoiceTokenResponse>('/impact/voice/token', { 
+            step_id: stepId,
+            turnstile_token: captchaToken
+        });
         
         if (cleanup) return;
 
@@ -202,7 +210,7 @@ export default function SessionPage() {
       }
     };
 
-    if (stepId) {
+    if (stepId && captchaToken) {
         initSession();
     }
 
@@ -223,7 +231,7 @@ export default function SessionPage() {
         if (audioContextRef.current) audioContextRef.current.close();
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [stepId]);
+  }, [stepId, captchaToken]);
 
     // Playback Logic
     const schedulePlayback = (float32Data: Float32Array) => {
@@ -254,6 +262,12 @@ export default function SessionPage() {
 
 
       <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
+        <div className="hidden">
+            <Turnstile 
+                siteKey={TURNSTILE_SITE_KEY_AI}
+                onSuccess={(token) => setCaptchaToken(token)}
+            />
+        </div>
 
 
         <header className="p-4 flex items-center justify-between z-10">

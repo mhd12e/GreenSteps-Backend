@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from schemas.impact import (
     ImpactGenerateRequest,
@@ -15,7 +15,10 @@ from schemas.common import Envelope
 from services import impact as impact_service
 from services.voice_tokens import create_ephemeral_token
 from core.database import get_db
-from api.deps import get_current_active_user, rate_limit_user
+from api.deps import get_current_active_user, rate_limit_standard, rate_limit_ai
+
+from core.config import settings
+from services.turnstile import verify_turnstile_token
 
 router = APIRouter(prefix="/impact", tags=["impact"])
 
@@ -23,7 +26,7 @@ router = APIRouter(prefix="/impact", tags=["impact"])
 @router.get(
     "",
     response_model=Envelope[ImpactListResponse],
-    dependencies=[Depends(rate_limit_user)],
+    dependencies=[Depends(rate_limit_standard)],
     responses={401: {"model": ErrorResponse, "description": "Not authenticated"}},
 )
 def list_impacts(
@@ -37,7 +40,7 @@ def list_impacts(
 @router.post(
     "/generate",
     response_model=Envelope[ImpactResponse],
-    dependencies=[Depends(rate_limit_user)],
+    dependencies=[Depends(rate_limit_ai)],
     responses={
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         422: {"model": ErrorResponse, "description": "Invalid AI output"},
@@ -45,10 +48,12 @@ def list_impacts(
     },
 )
 def generate_impact(
+    request: Request,
     data: ImpactGenerateRequest,
     current_user=Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    verify_turnstile_token(data.turnstile_token, secret_key=settings.TURNSTILE_SECRET_KEY_AI_ACTIONS, remote_ip=request.client.host)
     impact, steps = impact_service.create_impact_from_prompt(db, current_user, data.topic)
     return Envelope(
         data=ImpactResponse(
@@ -72,7 +77,7 @@ def generate_impact(
 @router.get(
     "/{impact_id}",
     response_model=Envelope[ImpactPayloadResponse],
-    dependencies=[Depends(rate_limit_user)],
+    dependencies=[Depends(rate_limit_standard)],
     responses={
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         404: {"model": ErrorResponse, "description": "Impact not found"},
@@ -106,7 +111,7 @@ def get_impact_payload(
 @router.delete(
     "/{impact_id}",
     response_model=Envelope[ImpactDeleteData],
-    dependencies=[Depends(rate_limit_user)],
+    dependencies=[Depends(rate_limit_standard)],
     responses={
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         404: {"model": ErrorResponse, "description": "Impact not found"},
@@ -124,7 +129,7 @@ def delete_impact(
 @router.post(
     "/voice/token",
     response_model=Envelope[VoiceTokenResponse],
-    dependencies=[Depends(rate_limit_user)],
+    dependencies=[Depends(rate_limit_ai)],
     responses={
         401: {"model": ErrorResponse, "description": "Not authenticated"},
         404: {"model": ErrorResponse, "description": "Step not found"},
@@ -132,9 +137,12 @@ def delete_impact(
     },
 )
 def create_voice_token(
+    request: Request,
     payload: VoiceTokenRequest,
     user=Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    verify_turnstile_token(payload.turnstile_token, secret_key=settings.TURNSTILE_SECRET_KEY_AI_ACTIONS, remote_ip=request.client.host)
     token_data = create_ephemeral_token(db, user, payload.step_id)
     return Envelope(data=VoiceTokenResponse(**token_data))
+

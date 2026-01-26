@@ -11,36 +11,43 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { UploadCloud, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTitle } from '@/hooks/use-title';
+import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
+import { TURNSTILE_SITE_KEY_AI } from '@/lib/config';
+import { useRef } from 'react';
 
 const formSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters'),
   image: z.any()
     .refine((files) => files?.length === 1, "Image is required")
-    .refine((files) => files?.[0]?.size <= 5 * 1024 * 1024, "Max file size is 5MB") 
+    .refine((files) => files?.[0]?.size <= 5 * 1024 * 1024, "Max file size is 5MB"),
+  turnstile_token: z.string().min(1, 'Please complete the security check'),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function CreateMaterialPage() {
   useTitle('New Material');
   const navigate = useNavigate();
   const [preview, setPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const turnstileRef = useRef<TurnstileInstance>(null);
   
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: { title: '', turnstile_token: '' },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormValues) => {
     try {
         const formData = new FormData();
         formData.append('title', values.title);
         formData.append('image', values.image[0]);
+        formData.append('turnstile_token', values.turnstile_token);
 
         const res: any = await api.post('/materials/generate', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
 
-        // Response is Envelope<MaterialResponse>
-        // api.ts unwrap -> returns MaterialResponse
         const materialId = res.id;
         
         toast.success("Material uploaded! AI is analyzing...");
@@ -48,6 +55,8 @@ export default function CreateMaterialPage() {
     } catch (error: any) {
         console.error(error);
         toast.error("Failed to upload material");
+        turnstileRef.current?.reset();
+        form.setValue('turnstile_token', '');
     }
   };
 
@@ -169,10 +178,28 @@ export default function CreateMaterialPage() {
                         )}
                     />
 
+                    <FormField
+                        control={form.control}
+                        name="turnstile_token"
+                        render={({ field }) => (
+                            <FormItem className="hidden">
+                                <FormControl>
+                                    <Turnstile
+                                        ref={turnstileRef}
+                                        siteKey={TURNSTILE_SITE_KEY_AI}
+                                        onSuccess={(token) => field.onChange(token)}
+                                        options={{ appearance: 'always' }}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
                     <Button 
                         type="submit" 
                         className="alive-button w-full py-6 text-lg font-bold mt-4"
-                        disabled={form.formState.isSubmitting}
+                        disabled={form.formState.isSubmitting || !form.getValues('turnstile_token')}
                     >
                         {form.formState.isSubmitting ? (
                             <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
