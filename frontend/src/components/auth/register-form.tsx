@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { TagsInput } from '@/components/ui/tags-input';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Mail, Lock, User, Calendar, Eye, EyeOff } from 'lucide-react';
+import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
+import { TURNSTILE_SITE_KEY } from '@/lib/config';
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -18,6 +20,7 @@ const registerSchema = z.object({
   }),
   age: z.coerce.number().min(3).max(120),
   interests: z.array(z.string()).min(1, 'Add at least one interest'),
+  turnstile_token: z.string().min(1, 'Please complete the security check'),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -28,10 +31,11 @@ interface RegisterFormProps {
 
 export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const [showPassword, setShowPassword] = useState(false);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema) as any,
-    defaultValues: { email: '', password: '', full_name: '', age: undefined, interests: [] },
+    defaultValues: { email: '', password: '', full_name: '', age: undefined, interests: [], turnstile_token: '' },
   });
 
   const onRegisterSubmit = async (data: RegisterFormValues) => {
@@ -43,6 +47,9 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     } catch (err: any) {
         const msg = err.response?.data?.error?.message || 'Registration failed';
         toast.error(msg);
+        // Reset turnstile on failure
+        turnstileRef.current?.reset();
+        form.setValue('turnstile_token', '');
     }
   };
 
@@ -142,6 +149,29 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
                                 onChange={field.onChange} 
                                 placeholder="Add interests (Eco, Vegan...)" 
                                 className="bg-gray-50 border border-gray-200 focus-within:bg-white focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-500/10 rounded-xl min-h-[48px] p-3 font-medium transition-all"
+                            />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+
+            <FormField
+                control={form.control}
+                name="turnstile_token"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col items-center py-2">
+                        <FormControl>
+                            <Turnstile
+                                ref={turnstileRef}
+                                siteKey={TURNSTILE_SITE_KEY}
+                                onSuccess={(token) => field.onChange(token)}
+                                onExpire={() => field.onChange('')}
+                                onError={() => field.onChange('')}
+                                options={{
+                                    theme: 'light',
+                                    size: 'normal',
+                                }}
                             />
                         </FormControl>
                         <FormMessage />

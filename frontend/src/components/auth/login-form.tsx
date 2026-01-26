@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,10 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile';
+import { TURNSTILE_SITE_KEY } from '@/lib/config';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
+  turnstile_token: z.string().min(1, 'Please complete the security check'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -23,10 +26,11 @@ export function LoginForm() {
   const navigate = useNavigate();
   const { setTokens } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: '', password: '', turnstile_token: '' },
   });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
@@ -38,6 +42,9 @@ export function LoginForm() {
     } catch (err: any) {
         const msg = err.response?.data?.error?.message || 'Invalid credentials';
         toast.error(msg);
+        // Reset turnstile on failure
+        turnstileRef.current?.reset();
+        form.setValue('turnstile_token', '');
     }
   };
 
@@ -92,6 +99,30 @@ export function LoginForm() {
                     </FormItem>
                 )}
             />
+
+            <FormField
+                control={form.control}
+                name="turnstile_token"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col items-center py-2">
+                        <FormControl>
+                            <Turnstile
+                                ref={turnstileRef}
+                                siteKey={TURNSTILE_SITE_KEY}
+                                onSuccess={(token) => field.onChange(token)}
+                                onExpire={() => field.onChange('')}
+                                onError={() => field.onChange('')}
+                                options={{
+                                    theme: 'light',
+                                    size: 'normal',
+                                }}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+
             <Button 
                 type="submit" 
                 className="w-full py-3 rounded-xl font-bold text-lg shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 transition-all mt-2 active:scale-95 bg-teal-600 hover:bg-teal-700 text-white h-12" 
