@@ -37,15 +37,15 @@ export function WayCard({ materialId, way, index, variants }: WayCardProps) {
             </div>
         </div>
 
-        <CardContent className="p-5 flex-1">
-            <h3 className="font-bold text-xl mb-2 group-hover:text-primary transition-colors">{way.title}</h3>
-            <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
+        <CardContent className="p-4 md:p-5 flex-1">
+            <h3 className="font-bold text-lg md:text-xl mb-2 group-hover:text-primary transition-colors">{way.title}</h3>
+            <p className="text-sm text-muted-foreground line-clamp-3 md:line-clamp-4 leading-relaxed">
                 {way.description}
             </p>
         </CardContent>
 
-        <CardFooter className="p-5 pt-0">
-            <Button asChild className="w-full alive-button group/btn font-semibold">
+        <CardFooter className="p-4 md:p-5 pt-0">
+            <Button asChild className="w-full alive-button group/btn font-semibold text-sm md:text-base">
                 <Link to={`/materials/${materialId}/ways/${way.id}`}>
                     Try it out <ArrowRight className="ml-2 w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                 </Link>
