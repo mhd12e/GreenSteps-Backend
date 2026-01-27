@@ -7,8 +7,9 @@ from mangum import Mangum
 from api.routes import auth, impact, users, system, materials
 from core.database import Base, engine
 from core.error_handling import http_exception_handler, generic_exception_handler, validation_exception_handler
-from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from services.material_queue import start_worker, stop_worker
+from core.config import settings
 
 app = FastAPI(
     title="GreenSteps API",
@@ -23,7 +24,7 @@ app = FastAPI(
     openapi_url="/openapi.json",
     servers=[
         {
-            "url": "https://greensteps-api.devlix.org",
+            "url": settings.BACKEND_URL,
             "description": "Production server",
         }
     ],
@@ -38,7 +39,6 @@ app = FastAPI(
 
 @app.on_event("startup")
 def on_startup():
-    # Optional: only if you REALLY want auto-create tables
     Base.metadata.create_all(bind=engine)
     start_worker()
 
@@ -48,7 +48,7 @@ def on_shutdown():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://greensteps.devlix.org", "http://localhost:5173"],
+    allow_origins=[settings.FRONTEND_URL, "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -82,7 +82,6 @@ app.include_router(system.router)
 app.include_router(materials.router)
 
 INDEX_PATH = Path(__file__).with_name("index.html")
-
 
 @app.get("/test", include_in_schema=False)
 def serve_test_console():

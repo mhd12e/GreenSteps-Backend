@@ -25,7 +25,7 @@ import { useRef } from 'react';
 
 const generateSchema = z.object({
   topic: z.string().min(3, 'Topic must be at least 3 characters').max(200),
-  turnstile_token: z.string().min(1, 'Please complete the security check'),
+  turnstile_token: z.string().optional(),
 });
 
 type GenerateFormValues = z.infer<typeof generateSchema>;
@@ -34,6 +34,7 @@ export default function GenerateImpactPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const turnstileRef = useRef<TurnstileInstance>(null);
+  const pendingSubmit = useRef<GenerateFormValues | null>(null);
 
   const form = useForm<GenerateFormValues>({
     resolver: zodResolver(generateSchema),
@@ -43,23 +44,56 @@ export default function GenerateImpactPage() {
     },
   });
 
+  const performSubmission = async (data: GenerateFormValues) => {
+      // Ensure we have a token before sending
+      if (!data.turnstile_token) {
+          toast.error("Security check failed. Please try again.");
+          setLoading(false);
+          return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await api.post<unknown, ImpactResponse>('/impact/generate', data);
+        toast.success('Impact plan generated successfully!');
+        navigate(`/impacts/${response.id}`, { state: { newImpact: true } });
+      } catch (error: any) {
+        console.error("Generation failed", error);
+        const msg = error.response?.data?.error?.message || 'Failed to generate impact. Please try again.';
+        toast.error(msg);
+        form.setError('topic', { message: msg });
+        turnstileRef.current?.reset();
+        form.setValue('turnstile_token', '');
+      } finally {
+        setLoading(false);
+        pendingSubmit.current = null;
+      }
+  };
+
   const onSubmit = async (data: GenerateFormValues) => {
-    setLoading(true);
-    try {
-      const response = await api.post<unknown, ImpactResponse>('/impact/generate', data);
-      toast.success('Impact plan generated successfully!');
-      // Redirect to the new impact detail page with a flag for confetti
-      navigate(`/impacts/${response.id}`, { state: { newImpact: true } });
-    } catch (error: any) {
-      console.error("Generation failed", error);
-      const msg = error.response?.data?.error?.message || 'Failed to generate impact. Please try again.';
-      toast.error(msg);
-      form.setError('topic', { message: msg });
-      turnstileRef.current?.reset();
-      form.setValue('turnstile_token', '');
-    } finally {
-      setLoading(false);
+    setLoading(true); // Immediate feedback
+    
+    const token = form.getValues('turnstile_token');
+    
+    if (!token) {
+        // Token missing? Trigger check and wait.
+        console.log("Token missing, executing Turnstile...");
+        pendingSubmit.current = data;
+        turnstileRef.current?.execute();
+        // Do NOT set loading false here; keep it spinning while Turnstile runs
+        return;
     }
+    
+    await performSubmission(data);
+  };
+
+  const onTurnstileSuccess = (token: string) => {
+      form.setValue('turnstile_token', token);
+      if (pendingSubmit.current) {
+          // Retry submission with the new token
+          const data = { ...pendingSubmit.current, turnstile_token: token };
+          performSubmission(data);
+      }
   };
 
   return (
@@ -102,14 +136,17 @@ export default function GenerateImpactPage() {
               <FormField
                 control={form.control}
                 name="turnstile_token"
-                render={({ field }) => (
-                  <FormItem className="hidden">
+                render={() => (
+                  <FormItem className="fixed -top-full left-0 opacity-0 pointer-events-none">
                     <FormControl>
                       <Turnstile
                         ref={turnstileRef}
                         siteKey={TURNSTILE_SITE_KEY_AI}
-                        onSuccess={(token) => field.onChange(token)}
-                        options={{ appearance: 'always' }}
+                        onSuccess={onTurnstileSuccess}
+                        options={{ 
+                            execution: 'execute',
+                            appearance: 'interaction-only' 
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -117,7 +154,7 @@ export default function GenerateImpactPage() {
                 )}
               />
 
-              <Button type="submit" size="lg" className="alive-button w-full rounded-full py-6 text-lg font-bold" disabled={loading || !form.getValues('turnstile_token')}>
+              <Button type="submit" size="lg" className="alive-button w-full rounded-full py-6 text-lg font-bold" disabled={loading}>
                 {loading ? (
                     <>
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating Plan...

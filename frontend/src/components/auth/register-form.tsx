@@ -42,7 +42,10 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     try {
       const payload = { ...data, interests: data.interests };
       await api.post('/auth/register', payload);
-      toast.success('Registration successful! Please login.');
+      toast.success('Registration successful!', {
+          description: 'Please check your email (and spam folder) to verify your account before logging in.',
+          duration: 10000
+      });
       onSuccess(data.email);
     } catch (err: any) {
         const msg = err.response?.data?.error?.message || 'Registration failed';

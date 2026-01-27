@@ -1,7 +1,6 @@
 import base64
 import io
 import logging
-from typing import Optional
 from PIL import Image
 from google.genai import types
 from core.config import settings

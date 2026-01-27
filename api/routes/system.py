@@ -16,8 +16,8 @@ def limits():
     return Envelope(
         data=LimitsResponse(
             rate_limits=RateLimitInfo(
-                per_user_per_minute=settings.RATE_LIMIT_PER_MINUTE,
-                per_ip_per_minute=settings.RATE_LIMIT_IP_PER_MINUTE,
+                per_user_per_minute=settings.RATE_LIMIT_STANDARD_PER_MINUTE,
+                per_ip_per_minute=settings.RATE_LIMIT_AUTH_PER_MINUTE,
             )
         )
     )

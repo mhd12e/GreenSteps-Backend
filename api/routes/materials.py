@@ -1,4 +1,20 @@
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, status, Request
+from sqlalchemy.orm import Session
+from typing import List
+import uuid
+
+from core.database import get_db
 from api.deps import get_current_user, rate_limit_standard, rate_limit_ai
+from services.material_service import (
+    create_initial_material, 
+    get_material,
+    list_materials,
+    update_material,
+    delete_material
+)
+from services.material_queue import enqueue_material
+from schemas.materials import MaterialResponse, MaterialUpdate
+from schemas.common import Envelope
 
 from core.config import settings
 from services.turnstile import verify_turnstile_token

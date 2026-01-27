@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import AuthPage from '@/pages/auth/auth-page';
+import VerifyPage from '@/pages/auth/verify';
 import Dashboard from '@/pages/dashboard';
 import ImpactsList from '@/pages/impacts/list';
 import GenerateImpactPage from '@/pages/impacts/generate';
@@ -29,6 +30,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<AuthPage />} />
           <Route path="/register" element={<AuthPage />} />
+          <Route path="/verify" element={<VerifyPage />} />
           <Route path="/legal/terms" element={<TermsOfService />} />
           <Route path="/legal/privacy" element={<PrivacyPolicy />} />
 

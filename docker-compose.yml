@@ -32,6 +32,8 @@ services:
       dockerfile: nginx/Dockerfile
     container_name: greensteps_web
     restart: always
+    env_file:
+      - .env
     depends_on:
       - api
     ports:

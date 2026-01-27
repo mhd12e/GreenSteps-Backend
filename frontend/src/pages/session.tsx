@@ -262,7 +262,7 @@ export default function SessionPage() {
 
 
       <div className="min-h-screen flex flex-col bg-background relative overflow-hidden">
-        <div className="hidden">
+        <div className="fixed -top-full left-0 opacity-0 pointer-events-none">
             <Turnstile 
                 siteKey={TURNSTILE_SITE_KEY_AI}
                 onSuccess={(token) => setCaptchaToken(token)}
@@ -297,13 +297,13 @@ export default function SessionPage() {
               <h2 className="text-4xl font-bold text-foreground tracking-tight">Voice Coach</h2>
 
 
-              <p className="text-lg text-muted-foreground font-medium">
+                            <p className="text-lg text-muted-foreground font-medium">
 
 
-                  {status === 'initializing' ? 'Connecting to AI...' : status === 'connected' ? 'Listening...' : 'Disconnected'}
+                                {status === 'connected' ? 'Listening...' : status === 'error' ? 'Error' : 'Connecting to AI...'}
 
 
-              </p>
+                            </p>
 
 
           </div>

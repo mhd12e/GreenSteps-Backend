@@ -20,7 +20,7 @@ const formSchema = z.object({
   image: z.any()
     .refine((files) => files?.length === 1, "Image is required")
     .refine((files) => files?.[0]?.size <= 5 * 1024 * 1024, "Max file size is 5MB"),
-  turnstile_token: z.string().min(1, 'Please complete the security check'),
+  turnstile_token: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -30,14 +30,24 @@ export default function CreateMaterialPage() {
   const navigate = useNavigate();
   const [preview, setPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [loading, setLoading] = useState(false);
   const turnstileRef = useRef<TurnstileInstance>(null);
+  const pendingSubmit = useRef<FormValues | null>(null);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: { title: '', turnstile_token: '' },
   });
 
-  const onSubmit = async (values: FormValues) => {
+  const performSubmission = async (values: FormValues) => {
+    // Ensure we have a token before sending
+    if (!values.turnstile_token) {
+        toast.error("Security check failed. Please try again.");
+        setLoading(false);
+        return;
+    }
+
+    setLoading(true);
     try {
         const formData = new FormData();
         formData.append('title', values.title);
@@ -57,7 +67,32 @@ export default function CreateMaterialPage() {
         toast.error("Failed to upload material");
         turnstileRef.current?.reset();
         form.setValue('turnstile_token', '');
+    } finally {
+        setLoading(false);
+        pendingSubmit.current = null;
     }
+  };
+
+  const onSubmit = async (values: FormValues) => {
+      setLoading(true); // Immediate feedback
+      
+      const token = form.getValues('turnstile_token');
+      if (!token) {
+          console.log("Token missing, executing Turnstile...");
+          pendingSubmit.current = values;
+          turnstileRef.current?.execute();
+          // Keep loading true while verifying
+          return;
+      }
+      await performSubmission(values);
+  };
+
+  const onTurnstileSuccess = (token: string) => {
+      form.setValue('turnstile_token', token);
+      if (pendingSubmit.current) {
+          const data = { ...pendingSubmit.current, turnstile_token: token };
+          performSubmission(data);
+      }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -181,14 +216,17 @@ export default function CreateMaterialPage() {
                     <FormField
                         control={form.control}
                         name="turnstile_token"
-                        render={({ field }) => (
-                            <FormItem className="hidden">
+                        render={() => (
+                            <FormItem className="fixed -top-full left-0 opacity-0 pointer-events-none">
                                 <FormControl>
                                     <Turnstile
                                         ref={turnstileRef}
                                         siteKey={TURNSTILE_SITE_KEY_AI}
-                                        onSuccess={(token) => field.onChange(token)}
-                                        options={{ appearance: 'always' }}
+                                        onSuccess={onTurnstileSuccess}
+                                        options={{ 
+                                            execution: 'execute', 
+                                            appearance: 'interaction-only' 
+                                        }}
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -199,9 +237,9 @@ export default function CreateMaterialPage() {
                     <Button 
                         type="submit" 
                         className="alive-button w-full py-6 text-lg font-bold mt-4"
-                        disabled={form.formState.isSubmitting || !form.getValues('turnstile_token')}
+                        disabled={loading}
                     >
-                        {form.formState.isSubmitting ? (
+                        {loading ? (
                             <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
                         ) : (
                             "Generate Ideas"

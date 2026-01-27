@@ -14,6 +14,7 @@ from services import auth as auth_service
 from services.turnstile import verify_turnstile_token
 from core.database import get_db
 from api.deps import get_current_user, get_current_active_user, rate_limit_auth, rate_limit_standard
+from core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -81,6 +82,19 @@ def refresh_token_endpoint(request: Request, refresh_token_data: RefreshTokenReq
 )
 def logout(logout_data: LogoutRequest, db: Session = Depends(get_db)):
     auth_service.logout(db, logout_data.refresh_token)
+    return Envelope()
+
+@router.get(
+    "/verify",
+    response_model=Envelope[None],
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid token"},
+        404: {"model": ErrorResponse, "description": "User not found"}
+    }
+)
+def verify_email_endpoint(token: str, db: Session = Depends(get_db)):
+    """Verify a user's email address using a token sent via email."""
+    auth_service.verify_email(db, token)
     return Envelope()
 
 @router.delete(
