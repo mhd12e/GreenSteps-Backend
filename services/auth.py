@@ -145,7 +145,7 @@ def login(db: Session, email: str, password: str, user_agent: str = None, ip_add
     db.commit()
     return access, refresh
 
-def verify_email(db: Session, token: str) -> bool:
+def verify_email(db: Session, token: str) -> str:
     try:
         payload = verify_email_verification_token(token)
         user_id = payload.get("sub")
@@ -153,10 +153,10 @@ def verify_email(db: Session, token: str) -> bool:
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         if user.is_verified:
-            return True
+            return "already_verified"
         user.is_verified = True
         db.commit()
-        return True
+        return "verified"
     except HTTPException as e:
         raise e
     except Exception:

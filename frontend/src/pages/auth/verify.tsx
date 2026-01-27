@@ -11,7 +11,7 @@ export default function VerifyPage() {
   useTitle('Verify Email');
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'already_verified' | 'error'>('loading');
 
   useEffect(() => {
     const verify = async () => {
@@ -21,9 +21,15 @@ export default function VerifyPage() {
       }
 
       try {
-        await api.get(`/auth/verify?token=${token}`);
-        setStatus('success');
-        toast.success('Email verified successfully!');
+        const res: any = await api.get(`/auth/verify?token=${token}`);
+        // api.ts wrapper returns data directly if Envelope.
+        // But let's check what it returns. If Envelope(data="already_verified"), api.ts returns "already_verified".
+        if (res === 'already_verified') {
+            setStatus('already_verified');
+        } else {
+            setStatus('success');
+            toast.success('Email verified successfully!');
+        }
       } catch (error) {
         console.error('Verification failed', error);
         setStatus('error');
@@ -55,6 +61,23 @@ export default function VerifyPage() {
               <h3 className="text-xl font-bold mb-2">Success!</h3>
               <p className="text-muted-foreground text-center mb-8">
                 Your email has been verified. You can now access all features of GreenSteps.
+              </p>
+              <Button asChild className="alive-button w-full rounded-xl py-6 font-bold text-lg">
+                <Link to="/login" replace>
+                  Go to Login <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+            </>
+          )}
+
+          {status === 'already_verified' && (
+            <>
+              <div className="bg-blue-50 p-4 rounded-full mb-6">
+                <CheckCircle2 className="h-12 w-12 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-bold mb-2 text-blue-900">Already Verified</h3>
+              <p className="text-muted-foreground text-center mb-8">
+                Your email address was already verified. You can simply log in.
               </p>
               <Button asChild className="alive-button w-full rounded-xl py-6 font-bold text-lg">
                 <Link to="/login" replace>

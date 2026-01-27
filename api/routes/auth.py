@@ -86,7 +86,7 @@ def logout(logout_data: LogoutRequest, db: Session = Depends(get_db)):
 
 @router.get(
     "/verify",
-    response_model=Envelope[None],
+    response_model=Envelope[str],
     responses={
         400: {"model": ErrorResponse, "description": "Invalid token"},
         404: {"model": ErrorResponse, "description": "User not found"}
@@ -94,8 +94,8 @@ def logout(logout_data: LogoutRequest, db: Session = Depends(get_db)):
 )
 def verify_email_endpoint(token: str, db: Session = Depends(get_db)):
     """Verify a user's email address using a token sent via email."""
-    auth_service.verify_email(db, token)
-    return Envelope()
+    status_msg = auth_service.verify_email(db, token)
+    return Envelope(data=status_msg)
 
 @router.delete(
     "/account",
